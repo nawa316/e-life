@@ -292,10 +292,16 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // When deleting a habit, also delete all scheduled instances linked to this habit
   const deleteHabit = async (id: string) => {
     setHabits((prev) => prev.filter((h) => h.id !== id));
+    setTasks((prev) => prev.filter((t) => t.habitId !== id));
+
     if (isSupabaseConfigured && supabase) {
-      await supabase.from("habits").delete().eq("id", id);
+      await Promise.all([
+        supabase.from("habits").delete().eq("id", id),
+        supabase.from("tasks").delete().eq("habit_id", id),
+      ]);
     }
   };
 
