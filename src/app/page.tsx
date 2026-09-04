@@ -20,13 +20,13 @@ import { AnalyticsOverview } from "@/components/stats/AnalyticsOverview";
 import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
 import { ExportModal } from "@/components/ui/ExportModal";
 import { Task } from "@/lib/types";
-import { Sparkles, DownloadCloud, CalendarDays, Clock } from "lucide-react";
+import { Sparkles, DownloadCloud, CalendarDays, Clock, Inbox, Flame, Timer } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 function ScheduleApp() {
   const { selectedDate, scheduleTask, habits } = useSchedule();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
-  const [activeTab, setActiveTab] = useState<"planner" | "habits">("planner");
+  const [mobileTab, setMobileTab] = useState<"planner" | "backlog" | "habits" | "focus">("planner");
   const [timelineView, setTimelineView] = useState<"day" | "week">("day");
   const [isExportOpen, setIsExportOpen] = useState(false);
 
@@ -71,50 +71,50 @@ function ScheduleApp() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col">
+      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col pb-20 lg:pb-6">
         {/* Navigation Header */}
-        <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Sparkles size={19} className="text-white" />
+        <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+              <Sparkles size={17} className="text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold tracking-tight text-white">e-life</h1>
-                <span className="text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.2 rounded-full">
-                  v1.3
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-none">e-life</h1>
+                <span className="text-[9px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded-full">
+                  v1.4
                 </span>
               </div>
-              <p className="text-xs text-zinc-400">
-                Daily & Weekly Scheduler, Backlog, Habits & Pomodoro Focus
+              <p className="text-[11px] text-zinc-400 hidden sm:block">
+                Daily & Weekly Scheduler, Backlog & Habit Tracker
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* View Mode Switcher (Day vs Week) */}
-            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1">
+            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
               <button
                 onClick={() => setTimelineView("day")}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   timelineView === "day"
                     ? "bg-blue-600 text-white shadow-xs"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <Clock size={13} />
-                Day View
+                <Clock size={12} />
+                <span className="hidden xs:inline">Day</span>
               </button>
               <button
                 onClick={() => setTimelineView("week")}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   timelineView === "week"
                     ? "bg-blue-600 text-white shadow-xs"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <CalendarDays size={13} />
-                Week View
+                <CalendarDays size={12} />
+                <span className="hidden xs:inline">Week</span>
               </button>
             </div>
 
@@ -123,39 +123,23 @@ function ScheduleApp() {
               size="sm"
               variant="outline"
               onClick={() => setIsExportOpen(true)}
-              className="hidden sm:inline-flex"
+              className="px-2.5 py-1 text-xs"
             >
-              <DownloadCloud size={14} />
-              Sync & Backup
+              <DownloadCloud size={13} />
+              <span className="hidden sm:inline">Sync & Backup</span>
             </Button>
-
-            <a
-              href="https://github.com/nawa316/e-life"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition-all"
-            >
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-              </svg>
-              GitHub
-            </a>
           </div>
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 max-w-[1700px] w-full mx-auto p-4 md:p-6 space-y-5">
+        <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-5 space-y-4 sm:space-y-5">
           {/* Top Analytics Stats */}
           <AnalyticsOverview />
 
-          {/* 3-Column Responsive Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Desktop 3-Column Grid */}
+          <div className="hidden lg:grid lg:grid-cols-12 gap-6 items-start">
             {/* Left Column: Backlog Activity Drawer + Focus Pomodoro */}
-            <div
-              className={`lg:col-span-4 space-y-4 ${
-                activeTab === "habits" ? "hidden lg:block" : "block"
-              }`}
-            >
+            <div className="lg:col-span-4 space-y-4">
               <div className="h-[520px]">
                 <BacklogDrawer />
               </div>
@@ -163,11 +147,7 @@ function ScheduleApp() {
             </div>
 
             {/* Center Column: Interactive Day or Week Timeline */}
-            <div
-              className={`lg:col-span-5 h-[760px] ${
-                activeTab === "habits" ? "hidden lg:block" : "block"
-              }`}
-            >
+            <div className="lg:col-span-5 h-[760px]">
               {timelineView === "day" ? (
                 <DayTimeline startHour={6} endHour={23} />
               ) : (
@@ -176,18 +156,99 @@ function ScheduleApp() {
             </div>
 
             {/* Right Column: Habit Tracker & Consistency Heatmap */}
-            <div
-              className={`lg:col-span-3 space-y-4 ${
-                activeTab === "planner" ? "hidden lg:block" : "block"
-              }`}
-            >
+            <div className="lg:col-span-3 space-y-4">
               <div className="h-[520px]">
                 <HabitTracker />
               </div>
               <HabitHeatmap habits={habits} />
             </div>
           </div>
+
+          {/* Mobile Tab-Based View (Single Column for Small Screens) */}
+          <div className="block lg:hidden">
+            {mobileTab === "planner" && (
+              <div className="h-[calc(100vh-230px)] min-h-[500px]">
+                {timelineView === "day" ? (
+                  <DayTimeline startHour={6} endHour={23} />
+                ) : (
+                  <WeeklyTimeline />
+                )}
+              </div>
+            )}
+
+            {mobileTab === "backlog" && (
+              <div className="h-[calc(100vh-230px)] min-h-[500px]">
+                <BacklogDrawer />
+              </div>
+            )}
+
+            {mobileTab === "habits" && (
+              <div className="space-y-4 pb-4">
+                <div className="h-[460px]">
+                  <HabitTracker />
+                </div>
+                <HabitHeatmap habits={habits} />
+              </div>
+            )}
+
+            {mobileTab === "focus" && (
+              <div className="pt-2">
+                <PomodoroTimer />
+              </div>
+            )}
+          </div>
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/95 border-t border-zinc-800/80 backdrop-blur-lg px-2 py-1.5 flex items-center justify-around shadow-2xl">
+          <button
+            onClick={() => setMobileTab("planner")}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
+              mobileTab === "planner"
+                ? "text-blue-400 bg-blue-500/10"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Clock size={18} />
+            <span className="text-[10px] font-medium mt-0.5">Schedule</span>
+          </button>
+
+          <button
+            onClick={() => setMobileTab("backlog")}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
+              mobileTab === "backlog"
+                ? "text-blue-400 bg-blue-500/10"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Inbox size={18} />
+            <span className="text-[10px] font-medium mt-0.5">Backlog</span>
+          </button>
+
+          <button
+            onClick={() => setMobileTab("habits")}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
+              mobileTab === "habits"
+                ? "text-amber-400 bg-amber-500/10"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Flame size={18} />
+            <span className="text-[10px] font-medium mt-0.5">Habits</span>
+          </button>
+
+          <button
+            onClick={() => setMobileTab("focus")}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
+              mobileTab === "focus"
+                ? "text-purple-400 bg-purple-500/10"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Timer size={18} />
+            <span className="text-[10px] font-medium mt-0.5">Focus</span>
+          </button>
+        </nav>
 
         {/* Sync & Export Modal */}
         <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
