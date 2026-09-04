@@ -81,7 +81,6 @@ function ScheduleApp() {
     }
   };
 
-  // Determine dynamic grid layout based on collapsed states
   const getCenterSpanClass = () => {
     if (leftPanelOpen && rightPanelOpen) return "lg:col-span-5";
     if (!leftPanelOpen && !rightPanelOpen) return "lg:col-span-12";
@@ -96,7 +95,7 @@ function ScheduleApp() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col pb-20 lg:pb-6">
+      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col">
         {/* Navigation Header */}
         <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -107,7 +106,7 @@ function ScheduleApp() {
               <div className="flex items-center gap-1.5">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-none">e-life</h1>
                 <span className="text-[9px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded-full">
-                  v1.5
+                  v1.6
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 hidden sm:block">
@@ -180,7 +179,7 @@ function ScheduleApp() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-5 space-y-4 sm:space-y-5">
+        <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-5 space-y-4 sm:space-y-5 pb-24 lg:pb-6">
           {/* Top Analytics Stats */}
           <AnalyticsOverview />
 
@@ -196,7 +195,7 @@ function ScheduleApp() {
               </div>
             )}
 
-            {/* Center Column: Interactive Day or Week Timeline (Expands when panels collapse) */}
+            {/* Center Column: Interactive Day or Week Timeline */}
             <div className={`${getCenterSpanClass()} h-[760px] transition-all duration-300`}>
               {timelineView === "day" ? (
                 <DayTimeline startHour={6} endHour={23} />
@@ -216,10 +215,10 @@ function ScheduleApp() {
             )}
           </div>
 
-          {/* Mobile Tab-Based View (Single Column for Small Screens) */}
+          {/* Mobile Tab-Based View */}
           <div className="block lg:hidden">
             {mobileTab === "planner" && (
-              <div className="h-[calc(100vh-230px)] min-h-[500px]">
+              <div className="h-[calc(100vh-220px)] min-h-[500px]">
                 {timelineView === "day" ? (
                   <DayTimeline startHour={6} endHour={23} />
                 ) : (
@@ -229,13 +228,13 @@ function ScheduleApp() {
             )}
 
             {mobileTab === "backlog" && (
-              <div className="h-[calc(100vh-230px)] min-h-[500px]">
+              <div className="h-[calc(100vh-220px)] min-h-[500px]">
                 <BacklogDrawer />
               </div>
             )}
 
             {mobileTab === "habits" && (
-              <div className="space-y-4 pb-4">
+              <div className="space-y-4 pb-2">
                 <div className="h-[460px]">
                   <HabitTracker />
                 </div>
@@ -251,56 +250,62 @@ function ScheduleApp() {
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation Bar */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/95 border-t border-zinc-800/80 backdrop-blur-lg px-2 py-1.5 flex items-center justify-around shadow-2xl">
-          <button
-            onClick={() => setMobileTab("planner")}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              mobileTab === "planner"
-                ? "text-blue-400 bg-blue-500/10"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Clock size={18} />
-            <span className="text-[10px] font-medium mt-0.5">Schedule</span>
-          </button>
+        {/* Guaranteed Fixed Mobile Bottom Navigation Bar */}
+        <div className="block lg:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-auto">
+          <nav className="bg-zinc-950/95 border-t border-zinc-800/90 backdrop-blur-xl px-3 py-2 flex items-center justify-around shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.5)] safe-area-pb">
+            <button
+              type="button"
+              onClick={() => setMobileTab("planner")}
+              className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl transition-all cursor-pointer ${
+                mobileTab === "planner"
+                  ? "text-blue-400 bg-blue-500/15 font-semibold"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Clock size={19} />
+              <span className="text-[10px] tracking-wide mt-1">Schedule</span>
+            </button>
 
-          <button
-            onClick={() => setMobileTab("backlog")}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              mobileTab === "backlog"
-                ? "text-blue-400 bg-blue-500/10"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Inbox size={18} />
-            <span className="text-[10px] font-medium mt-0.5">Backlog</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("backlog")}
+              className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl transition-all cursor-pointer ${
+                mobileTab === "backlog"
+                  ? "text-blue-400 bg-blue-500/15 font-semibold"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Inbox size={19} />
+              <span className="text-[10px] tracking-wide mt-1">Backlog</span>
+            </button>
 
-          <button
-            onClick={() => setMobileTab("habits")}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              mobileTab === "habits"
-                ? "text-amber-400 bg-amber-500/10"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Flame size={18} />
-            <span className="text-[10px] font-medium mt-0.5">Habits</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("habits")}
+              className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl transition-all cursor-pointer ${
+                mobileTab === "habits"
+                  ? "text-amber-400 bg-amber-500/15 font-semibold"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Flame size={19} />
+              <span className="text-[10px] tracking-wide mt-1">Habits</span>
+            </button>
 
-          <button
-            onClick={() => setMobileTab("focus")}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              mobileTab === "focus"
-                ? "text-purple-400 bg-purple-500/10"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            <Timer size={18} />
-            <span className="text-[10px] font-medium mt-0.5">Focus</span>
-          </button>
-        </nav>
+            <button
+              type="button"
+              onClick={() => setMobileTab("focus")}
+              className={`flex flex-col items-center justify-center py-1.5 px-4 rounded-xl transition-all cursor-pointer ${
+                mobileTab === "focus"
+                  ? "text-purple-400 bg-purple-500/15 font-semibold"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Timer size={19} />
+              <span className="text-[10px] tracking-wide mt-1">Focus</span>
+            </button>
+          </nav>
+        </div>
 
         {/* Sync & Export Modal */}
         <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
