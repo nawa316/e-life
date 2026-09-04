@@ -111,7 +111,7 @@ function ScheduleApp() {
               <div className="flex items-center gap-1.5">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-none">e-life</h1>
                 <span className="text-[9px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded-full">
-                  v1.6
+                  v1.7
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 hidden sm:block">
@@ -184,7 +184,7 @@ function ScheduleApp() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-5 space-y-4 sm:space-y-5 pb-24 lg:pb-6">
+        <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-5 space-y-4 sm:space-y-5 pb-28 lg:pb-6">
           {/* Top Analytics Stats */}
           <AnalyticsOverview />
 
@@ -220,10 +220,10 @@ function ScheduleApp() {
             )}
           </div>
 
-          {/* Mobile Tab-Based View */}
+          {/* Mobile Tab-Based View with safe height calculation */}
           <div className="block lg:hidden">
             {mobileTab === "planner" && (
-              <div className="h-[calc(100vh-220px)] min-h-[500px]">
+              <div className="h-[calc(100vh-270px)] min-h-[460px]">
                 {timelineView === "day" ? (
                   <DayTimeline startHour={6} endHour={23} />
                 ) : (
@@ -233,14 +233,14 @@ function ScheduleApp() {
             )}
 
             {mobileTab === "backlog" && (
-              <div className="h-[calc(100vh-220px)] min-h-[500px]">
+              <div className="h-[calc(100vh-270px)] min-h-[460px]">
                 <BacklogDrawer />
               </div>
             )}
 
             {mobileTab === "habits" && (
-              <div className="space-y-4 pb-2">
-                <div className="h-[460px]">
+              <div className="space-y-4">
+                <div className="h-[420px]">
                   <HabitTracker />
                 </div>
                 <HabitHeatmap habits={habits} />
