@@ -111,7 +111,7 @@ function ScheduleApp() {
               <div className="flex items-center gap-1.5">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-none">e-life</h1>
                 <span className="text-[9px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded-full">
-                  v1.7
+                  v1.8
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 hidden sm:block">
@@ -220,8 +220,8 @@ function ScheduleApp() {
             )}
           </div>
 
-          {/* Mobile Tab-Based View with safe height calculation */}
-          <div className="block lg:hidden">
+          {/* Mobile Tab-Based View with clean scroll container */}
+          <div className="block lg:hidden space-y-4">
             {mobileTab === "planner" && (
               <div className="h-[calc(100vh-270px)] min-h-[460px]">
                 {timelineView === "day" ? (
@@ -239,8 +239,8 @@ function ScheduleApp() {
             )}
 
             {mobileTab === "habits" && (
-              <div className="space-y-4">
-                <div className="h-[420px]">
+              <div className="space-y-4 pb-6">
+                <div className="h-[480px]">
                   <HabitTracker />
                 </div>
                 <HabitHeatmap habits={habits} />
@@ -248,7 +248,7 @@ function ScheduleApp() {
             )}
 
             {mobileTab === "focus" && (
-              <div className="pt-2">
+              <div className="pt-2 pb-6">
                 <PomodoroTimer />
               </div>
             )}
