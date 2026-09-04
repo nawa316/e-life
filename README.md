@@ -1,6 +1,6 @@
 # e-life ⚡
 
-> Modern, intuitive Day Scheduler, Drag-to-Time Planner, Activity Backlog & Habit Tracker built with **Next.js 16 (App Router)**, **Tailwind CSS**, **shadcn/ui aesthetics**, and **@dnd-kit**.
+> Modern, intuitive Day & Weekly Scheduler, Drag-to-Time Planner, Activity Backlog, Habit Tracker & Pomodoro Focus Timer built with **Next.js 16 (App Router)**, **Tailwind CSS**, **shadcn/ui aesthetics**, **@dnd-kit**, and optional **Supabase Database**.
 
 ![e-life preview](public/preview.png)
 
@@ -8,40 +8,50 @@
 
 ## ✨ Features
 
-- 🕒 **Interactive 24-Hour Day Timeline**:
-  - Drag tasks directly from your backlog onto your day schedule.
-  - Quick-adjust duration buttons (`-15m` / `+15m`).
-  - Real-time red indicator line highlighting the current time of day.
-  - Daily completion tracker and planned focus hours.
+- 🕒 **Interactive 24-Hour Day & 7-Day Weekly Timeline**:
+  - Drag tasks directly from your backlog onto your day schedule with 15-minute resolution.
+  - Quick-adjust duration controls (`-15m` / `+15m`).
+  - Real-time live red indicator line highlighting current time of day.
+  - 7-Day matrix overview with single-click jump into any day.
 
 - 📥 **Activity Backlog Drawer**:
   - Keep all unscheduled tasks, side projects, and thoughts organized.
   - Search, filter by category (*Work, Personal, Health, Learning, Side Projects*), and priority (*Urgent, High, Medium, Low*).
-  - Quick "Schedule Today" action.
 
 - 🔥 **Habits & Routines Engine**:
-  - Daily streak counters & celebration confetti on completions.
-  - Frequency scheduling: *Daily*, *Weekdays*, *Weekends*, or *Weekly*.
+  - Daily streak counters, celebration confetti, and 3-week visual heatmap grid.
+  - Multi-frequency routines (*Daily*, *Weekdays*, *Weekends*, *Weekly*).
   - One-click "Add to Today's Timeline" from habits.
 
-- 📊 **Analytics & Focus Overview**:
-  - Real-time completion rates, total active streaks, and daily focus time.
-  - Instant reset/seed demo data button to explore sample schedules.
+- 🍅 **Deep Focus Pomodoro Timer**:
+  - 25m Focus, 5m Short Break, and 15m Long Break intervals with progress ring & session counter.
 
-- 🎨 **Modern Sleek Aesthetics**:
-  - Dark-mode first design inspired by shadcn/ui.
-  - Smooth Lucide icons and drag preview overlays.
-  - LocalStorage synchronization to persist your schedule across reloads.
+- 🗄️ **Supabase Database Integration & Local Offline Fallback**:
+  - Cloud persistence with Supabase PostgreSQL or offline LocalStorage.
+  - Included SQL schema migration script with Row Level Security (`supabase/schema.sql`).
+
+- 💾 **Data Backup, JSON Restore & iCal Calendar Sync**:
+  - One-click JSON backup export & restore.
+  - Apple Calendar / Google Calendar export (`.ics`).
+
+---
+
+## 🗄️ Setting Up Supabase Database (Optional)
+
+1. Create a project at [Supabase](https://supabase.com).
+2. Go to the **SQL Editor** in Supabase and run the script in `supabase/schema.sql`.
+3. Create a `.env.local` file in your root folder:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+*(If no Supabase credentials are provided, `e-life` runs automatically in LocalStorage offline mode)*.
 
 ---
 
 ## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ (Node 20+ / 24+ recommended)
-- npm, pnpm, or bun
-
-### Installation
 
 ```bash
 # Clone the repository
@@ -57,19 +67,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
----
-
-## 🛠 Tech Stack
-
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Drag & Drop**: [@dnd-kit/core](https://dndkit.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Date Handling**: [date-fns](https://date-fns.org/)
-- **Effects**: [canvas-confetti](https://www.npmjs.com/package/canvas-confetti)
-- **Deployment Ready**: Vercel / Docker
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
 ---
 
