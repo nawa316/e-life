@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/lib/types";
 import { useSchedule } from "@/lib/store";
 import { timeToMinutes, formatMinutes, minutesToTime } from "@/lib/utils";
-import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, GripVertical, Calendar } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, GripVertical } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 
@@ -75,7 +75,6 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
   };
 
   const isCompact = height < 48;
-  const isMedium = height >= 48 && height < 75;
 
   return (
     <>
@@ -157,13 +156,13 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             </div>
           </div>
 
-          {/* Right Action Icons */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            {/* Quick Adjust duration buttons */}
+          {/* Right Action Icons: Always accessible on mobile, visible on desktop hover */}
+          <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+            {/* Quick Adjust duration buttons (desktop) */}
             <button
               type="button"
               onClick={(e) => handleDurationChange(-15, e)}
-              className="p-1 text-[10px] font-mono text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded cursor-pointer"
+              className="hidden sm:inline-flex p-1 text-[10px] font-mono text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded cursor-pointer"
               title="Decrease 15 min"
             >
               -15m
@@ -171,18 +170,18 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             <button
               type="button"
               onClick={(e) => handleDurationChange(15, e)}
-              className="p-1 text-[10px] font-mono text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded cursor-pointer"
+              className="hidden sm:inline-flex p-1 text-[10px] font-mono text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded cursor-pointer"
               title="Increase 15 min"
             >
               +15m
             </button>
 
-            {/* Drag handle */}
+            {/* Drag handle (desktop) */}
             <div
               {...attributes}
               {...listeners}
               onClick={(e) => e.stopPropagation()}
-              className="p-1 text-zinc-500 hover:text-zinc-200 cursor-grab active:cursor-grabbing rounded hover:bg-zinc-800"
+              className="hidden sm:inline-flex p-1 text-zinc-500 hover:text-zinc-200 cursor-grab active:cursor-grabbing rounded hover:bg-zinc-800"
               title="Drag on timeline"
             >
               <GripVertical size={14} />
@@ -195,23 +194,25 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
                 e.stopPropagation();
                 unscheduleTask(task.id);
               }}
-              className="p-1 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 rounded cursor-pointer"
+              className="p-1.5 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
               title="Move back to backlog"
             >
               <ArrowUpRight size={14} />
             </button>
 
-            {/* Delete */}
+            {/* Explicit Delete Button */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                deleteTask(task.id);
+                if (confirm(`Delete "${task.title}" from schedule?`)) {
+                  deleteTask(task.id);
+                }
               }}
-              className="p-1 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded cursor-pointer"
+              className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors"
               title="Delete task"
             >
-              <Trash2 size={14} />
+              <Trash2 size={14} className="text-red-400/80 hover:text-red-400" />
             </button>
           </div>
         </div>
@@ -285,18 +286,34 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             ))}
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t border-zinc-800">
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              onClick={() => {
-                unscheduleTask(task.id);
-                setIsEditModalOpen(false);
-              }}
-            >
-              Move to Backlog
-            </Button>
+          <div className="flex flex-wrap justify-between items-center gap-2 pt-4 border-t border-zinc-800">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  deleteTask(task.id);
+                  setIsEditModalOpen(false);
+                }}
+              >
+                <Trash2 size={13} />
+                Delete
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  unscheduleTask(task.id);
+                  setIsEditModalOpen(false);
+                }}
+              >
+                <ArrowUpRight size={13} />
+                To Backlog
+              </Button>
+            </div>
 
             <div className="flex gap-2">
               <Button
