@@ -23,6 +23,7 @@ interface ScheduleContextType {
   deleteHabit: (id: string) => void;
   toggleHabitCompletion: (habitId: string, date: string) => void;
   scheduleHabitForToday: (habitId: string) => void;
+  importBackupData: (tasks: Task[], habits: Habit[], categories?: Category[]) => void;
   resetToDefaults: () => void;
 }
 
@@ -268,6 +269,12 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) => [...prev, newTask]);
   };
 
+  const importBackupData = (newTasks: Task[], newHabits: Habit[], newCategories?: Category[]) => {
+    if (newTasks) setTasks(newTasks);
+    if (newHabits) setHabits(newHabits);
+    if (newCategories) setCategories(newCategories);
+  };
+
   const resetToDefaults = () => {
     setTasks(initialTasks);
     setHabits(initialHabits);
@@ -296,6 +303,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         deleteHabit,
         toggleHabitCompletion,
         scheduleHabitForToday,
+        importBackupData,
         resetToDefaults,
       }}
     >

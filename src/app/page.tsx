@@ -17,13 +17,16 @@ import { HabitTracker } from "@/components/habits/HabitTracker";
 import { HabitHeatmap } from "@/components/habits/HabitHeatmap";
 import { AnalyticsOverview } from "@/components/stats/AnalyticsOverview";
 import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
+import { ExportModal } from "@/components/ui/ExportModal";
 import { Task } from "@/lib/types";
-import { Sparkles } from "lucide-react";
+import { Sparkles, DownloadCloud } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 function ScheduleApp() {
   const { selectedDate, scheduleTask, habits } = useSchedule();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeTab, setActiveTab] = useState<"planner" | "habits">("planner");
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -77,7 +80,7 @@ function ScheduleApp() {
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold tracking-tight text-white">e-life</h1>
                 <span className="text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.2 rounded-full">
-                  v1.1
+                  v1.2
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
@@ -110,6 +113,17 @@ function ScheduleApp() {
                 Habits & Streaks
               </button>
             </div>
+
+            {/* Sync / Export Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsExportOpen(true)}
+              className="hidden sm:inline-flex"
+            >
+              <DownloadCloud size={14} />
+              Sync & Backup
+            </Button>
 
             <a
               href="https://github.com/nawa316/e-life"
@@ -166,6 +180,9 @@ function ScheduleApp() {
             </div>
           </div>
         </main>
+
+        {/* Sync & Export Modal */}
+        <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
       </div>
 
       {/* Drag Overlay Preview */}
