@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { ScheduleProvider, useSchedule } from "@/lib/store";
 import { DayTimeline } from "@/components/timeline/DayTimeline";
+import { WeeklyTimeline } from "@/components/timeline/WeeklyTimeline";
 import { BacklogDrawer } from "@/components/backlog/BacklogDrawer";
 import { HabitTracker } from "@/components/habits/HabitTracker";
 import { HabitHeatmap } from "@/components/habits/HabitHeatmap";
@@ -19,13 +20,14 @@ import { AnalyticsOverview } from "@/components/stats/AnalyticsOverview";
 import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
 import { ExportModal } from "@/components/ui/ExportModal";
 import { Task } from "@/lib/types";
-import { Sparkles, DownloadCloud } from "lucide-react";
+import { Sparkles, DownloadCloud, CalendarDays, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 function ScheduleApp() {
   const { selectedDate, scheduleTask, habits } = useSchedule();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeTab, setActiveTab] = useState<"planner" | "habits">("planner");
+  const [timelineView, setTimelineView] = useState<"day" | "week">("day");
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   const sensors = useSensors(
@@ -80,37 +82,39 @@ function ScheduleApp() {
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold tracking-tight text-white">e-life</h1>
                 <span className="text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-2 py-0.2 rounded-full">
-                  v1.2
+                  v1.3
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
-                Daily Interactive Scheduler, Backlog, Habits & Pomodoro Focus
+                Daily & Weekly Scheduler, Backlog, Habits & Pomodoro Focus
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* View Switcher Tabs on small screens */}
-            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1 lg:hidden">
+            {/* View Mode Switcher (Day vs Week) */}
+            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1">
               <button
-                onClick={() => setActiveTab("planner")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  activeTab === "planner"
+                onClick={() => setTimelineView("day")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  timelineView === "day"
                     ? "bg-blue-600 text-white shadow-xs"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                Schedule & Backlog
+                <Clock size={13} />
+                Day View
               </button>
               <button
-                onClick={() => setActiveTab("habits")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  activeTab === "habits"
+                onClick={() => setTimelineView("week")}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  timelineView === "week"
                     ? "bg-blue-600 text-white shadow-xs"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                Habits & Streaks
+                <CalendarDays size={13} />
+                Week View
               </button>
             </div>
 
@@ -158,13 +162,17 @@ function ScheduleApp() {
               <PomodoroTimer />
             </div>
 
-            {/* Center Column: Interactive Day Timeline */}
+            {/* Center Column: Interactive Day or Week Timeline */}
             <div
               className={`lg:col-span-5 h-[760px] ${
                 activeTab === "habits" ? "hidden lg:block" : "block"
               }`}
             >
-              <DayTimeline startHour={6} endHour={23} />
+              {timelineView === "day" ? (
+                <DayTimeline startHour={6} endHour={23} />
+              ) : (
+                <WeeklyTimeline />
+              )}
             </div>
 
             {/* Right Column: Habit Tracker & Consistency Heatmap */}
