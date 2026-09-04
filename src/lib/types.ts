@@ -25,7 +25,7 @@ export type Task = {
   createdAt: string;
 };
 
-export type HabitFrequency = 'daily' | 'weekdays' | 'weekends' | 'weekly';
+export type HabitFrequency = 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'custom';
 
 export type Habit = {
   id: string;

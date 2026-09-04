@@ -13,6 +13,8 @@ interface HabitCardProps {
   habit: Habit;
 }
 
+const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export function HabitCard({ habit }: HabitCardProps) {
   const { selectedDate, toggleHabitCompletion, addTask, deleteHabit, categories } = useSchedule();
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -23,13 +25,17 @@ export function HabitCard({ habit }: HabitCardProps) {
   const isCompletedToday = habit.completedDates.includes(selectedDate);
   const category = categories.find((c) => c.id === habit.category);
 
-  // Frequency label helper
-  const frequencyLabel = {
-    daily: "Daily",
-    weekdays: "Weekdays",
-    weekends: "Weekends",
-    weekly: "Weekly",
-  }[habit.frequency];
+  // Format active days description
+  const getDaysSummary = () => {
+    if (!habit.daysOfWeek || habit.daysOfWeek.length === 7) return "Every day";
+    if (habit.daysOfWeek.length === 5 && [1, 2, 3, 4, 5].every((d) => habit.daysOfWeek?.includes(d))) {
+      return "Mon - Fri";
+    }
+    if (habit.daysOfWeek.length === 2 && [0, 6].every((d) => habit.daysOfWeek?.includes(d))) {
+      return "Sat - Sun";
+    }
+    return habit.daysOfWeek.map((d) => DAYS_SHORT[d]).join(", ");
+  };
 
   const handleConfirmSchedule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +69,7 @@ export function HabitCard({ habit }: HabitCardProps) {
               className={`mt-0.5 w-7 h-7 rounded-xl flex items-center justify-center border transition-all cursor-pointer shrink-0 ${
                 isCompletedToday
                   ? "bg-emerald-500 text-white border-emerald-400 shadow-sm shadow-emerald-500/30"
-                  : "border-zinc-700 hover:border-blue-400 text-transparent hover:text-zinc-400 bg-zinc-800/50"
+                  : "border-zinc-700 hover:border-amber-400 text-transparent hover:text-zinc-400 bg-zinc-800/50"
               }`}
             >
               <Check size={16} className={isCompletedToday ? "stroke-[2.5]" : ""} />
@@ -89,21 +95,28 @@ export function HabitCard({ habit }: HabitCardProps) {
                   {habit.streak} streak
                 </span>
 
-                {/* Frequency */}
+                {/* Preferred time & days badge */}
+                {habit.preferredTime && (
+                  <span className="flex items-center gap-1 text-[11px] font-mono text-zinc-300 bg-zinc-800/80 px-2 py-0.5 rounded-md border border-zinc-700/50">
+                    <Clock size={11} className="text-amber-400" />
+                    {habit.preferredTime}
+                  </span>
+                )}
+
+                {/* Days of Week summary */}
                 <span className="text-[11px] bg-zinc-800/80 text-zinc-400 px-2 py-0.5 rounded-md border border-zinc-700/50">
-                  {frequencyLabel}
+                  {getDaysSummary()}
                 </span>
 
                 {/* Target duration */}
                 <span className="flex items-center gap-1 text-[11px] text-zinc-400">
-                  <Clock size={12} />
                   {formatMinutes(habit.targetMinutes)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Action icons - ALWAYS VISIBLE ON MOBILE */}
+          {/* Action icons */}
           <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => setIsScheduleModalOpen(true)}
@@ -148,7 +161,7 @@ export function HabitCard({ habit }: HabitCardProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Start Time
+                Start Time (Preferred: {habit.preferredTime || "08:00"})
               </label>
               <input
                 type="time"

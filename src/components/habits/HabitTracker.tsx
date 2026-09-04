@@ -6,7 +6,17 @@ import { HabitCard } from "./HabitCard";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { HabitFrequency } from "@/lib/types";
-import { Flame, Plus, Sparkles, CheckCircle2 } from "lucide-react";
+import { Flame, Plus, Sparkles, Clock, Calendar } from "lucide-react";
+
+const DAYS_OF_WEEK = [
+  { id: 1, label: "M", full: "Monday" },
+  { id: 2, label: "T", full: "Tuesday" },
+  { id: 3, label: "W", full: "Wednesday" },
+  { id: 4, label: "T", full: "Thursday" },
+  { id: 5, label: "F", full: "Friday" },
+  { id: 6, label: "S", full: "Saturday" },
+  { id: 0, label: "S", full: "Sunday" },
+];
 
 export function HabitTracker() {
   const { habits, categories, addHabit, selectedDate } = useSchedule();
@@ -19,10 +29,27 @@ export function HabitTracker() {
   const [targetMinutes, setTargetMinutes] = useState(15);
   const [preferredTime, setPreferredTime] = useState("08:00");
   const [frequency, setFrequency] = useState<HabitFrequency>("daily");
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Mon-Fri default
 
   const completedTodayCount = habits.filter((h) =>
     h.completedDates.includes(selectedDate)
   ).length;
+
+  const toggleDay = (dayId: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(dayId)
+        ? prev.filter((d) => d !== dayId)
+        : [...prev, dayId]
+    );
+  };
+
+  const handleFrequencyChange = (newFreq: HabitFrequency) => {
+    setFrequency(newFreq);
+    if (newFreq === "daily") setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+    else if (newFreq === "weekdays") setSelectedDays([1, 2, 3, 4, 5]);
+    else if (newFreq === "weekends") setSelectedDays([0, 6]);
+    else if (newFreq === "weekly") setSelectedDays([1]); // Monday default
+  };
 
   const handleCreateHabit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +60,9 @@ export function HabitTracker() {
       description: description.trim() || undefined,
       category,
       targetMinutes: Number(targetMinutes) || 15,
-      preferredTime,
+      preferredTime: preferredTime || "08:00",
       frequency,
+      daysOfWeek: selectedDays,
       icon: "Sparkles",
       color: "#3b82f6",
     });
@@ -76,12 +104,12 @@ export function HabitTracker() {
         )}
       </div>
 
-      {/* Add Habit Modal */}
+      {/* Add Habit Modal with Day Selector and Preferred Time */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Create New Habit & Routine"
-        description="Track streaks and recurring activities seamlessly in your daily schedule."
+        description="Choose your recurring days and preferred time of day."
       >
         <form onSubmit={handleCreateHabit} className="space-y-4">
           <div>
@@ -91,41 +119,124 @@ export function HabitTracker() {
             <input
               type="text"
               required
-              placeholder="e.g. 10min Meditation, Morning Run, Read 15 pages"
+              placeholder="e.g. 15m Morning Meditation, Workout, Read Books"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-              Description / Motivation (Optional)
+              Description / Goal (Optional)
             </label>
             <input
               type="text"
-              placeholder="Why this habit matters to your life"
+              placeholder="Why this routine matters to you"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
             />
           </div>
 
+          {/* 1. SELECT RECURRING DAYS */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5 flex items-center justify-between">
+              <span>Select Active Days *</span>
+              <span className="text-[11px] text-zinc-500">
+                {selectedDays.length === 7
+                  ? "Every day"
+                  : `${selectedDays.length} day(s) selected`}
+              </span>
+            </label>
+
+            {/* Quick Frequency Presets */}
+            <div className="grid grid-cols-4 gap-1.5 mb-2.5">
+              <button
+                type="button"
+                onClick={() => handleFrequencyChange("daily")}
+                className={`py-1 text-xs rounded-lg border font-medium cursor-pointer transition-all ${
+                  frequency === "daily"
+                    ? "bg-amber-500/20 border-amber-500 text-amber-400"
+                    : "bg-zinc-800/60 border-zinc-750 text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Daily
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFrequencyChange("weekdays")}
+                className={`py-1 text-xs rounded-lg border font-medium cursor-pointer transition-all ${
+                  frequency === "weekdays"
+                    ? "bg-amber-500/20 border-amber-500 text-amber-400"
+                    : "bg-zinc-800/60 border-zinc-750 text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Weekdays
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFrequencyChange("weekends")}
+                className={`py-1 text-xs rounded-lg border font-medium cursor-pointer transition-all ${
+                  frequency === "weekends"
+                    ? "bg-amber-500/20 border-amber-500 text-amber-400"
+                    : "bg-zinc-800/60 border-zinc-750 text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Weekends
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFrequencyChange("custom")}
+                className={`py-1 text-xs rounded-lg border font-medium cursor-pointer transition-all ${
+                  frequency === "custom"
+                    ? "bg-amber-500/20 border-amber-500 text-amber-400"
+                    : "bg-zinc-800/60 border-zinc-750 text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+
+            {/* Individual Day of Week Pill Buttons */}
+            <div className="flex items-center justify-between gap-1.5 p-2 bg-zinc-950/60 border border-zinc-800 rounded-xl">
+              {DAYS_OF_WEEK.map((d) => {
+                const isSelected = selectedDays.includes(d.id);
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => {
+                      setFrequency("custom");
+                      toggleDay(d.id);
+                    }}
+                    title={d.full}
+                    className={`flex-1 h-9 rounded-lg text-xs font-bold transition-all cursor-pointer flex flex-col items-center justify-center ${
+                      isSelected
+                        ? "bg-amber-500 text-zinc-950 shadow-xs shadow-amber-500/30"
+                        : "bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-850"
+                    }`}
+                  >
+                    <span>{d.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. PREFERRED TIME & TARGET DURATION */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Frequency
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5 flex items-center gap-1">
+                <Clock size={12} className="text-amber-400" /> Preferred Time *
               </label>
-              <select
-                value={frequency}
-                onChange={(e) => setFrequency(e.target.value as HabitFrequency)}
-                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-blue-500"
-              >
-                <option value="daily">Every Day</option>
-                <option value="weekdays">Weekdays (Mon-Fri)</option>
-                <option value="weekends">Weekends (Sat-Sun)</option>
-                <option value="weekly">Once a Week</option>
-              </select>
+              <input
+                type="time"
+                required
+                value={preferredTime}
+                onChange={(e) => setPreferredTime(e.target.value)}
+                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500 cursor-pointer"
+              />
             </div>
 
             <div>
@@ -136,42 +247,48 @@ export function HabitTracker() {
                 type="number"
                 min={5}
                 max={240}
+                step={5}
                 value={targetMinutes}
                 onChange={(e) => setTargetMinutes(Number(e.target.value))}
-                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-blue-500"
+                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-blue-500"
+          {/* Quick preset durations */}
+          <div className="flex gap-2">
+            {[10, 15, 20, 30, 45, 60].map((mins) => (
+              <button
+                type="button"
+                key={mins}
+                onClick={() => setTargetMinutes(mins)}
+                className={`flex-1 py-1 text-xs rounded-md border font-medium cursor-pointer transition-all ${
+                  targetMinutes === mins
+                    ? "bg-amber-500/30 border-amber-500 text-amber-400"
+                    : "bg-zinc-800/60 border-zinc-700/60 text-zinc-400 hover:text-zinc-200"
+                }`}
               >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {mins}m
+              </button>
+            ))}
+          </div>
 
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Preferred Time
-              </label>
-              <input
-                type="time"
-                value={preferredTime}
-                onChange={(e) => setPreferredTime(e.target.value)}
-                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-blue-500"
-              />
-            </div>
+          {/* Category Selector */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              Category
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-amber-500"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-zinc-800">
