@@ -4,13 +4,17 @@ import React from "react";
 import { useSchedule } from "@/lib/store";
 import { timeToMinutes, formatMinutes } from "@/lib/utils";
 import { Task } from "@/lib/types";
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock, ArrowRight } from "lucide-react";
 import { Badge } from "../ui/Badge";
 
-export function WeeklyTimeline() {
-  const { selectedDate, setSelectedDate, tasks, categories, toggleTaskCompletion } = useSchedule();
+interface WeeklyTimelineProps {
+  onSelectDay?: (dateStr: string) => void;
+}
 
-  // Calculate the 7 days of the current week (Mon-Sun or Sun-Sat)
+export function WeeklyTimeline({ onSelectDay }: WeeklyTimelineProps) {
+  const { selectedDate, setSelectedDate, tasks, categories } = useSchedule();
+
+  // Calculate the 7 days of the current week (Mon-Sun)
   const [y, m, d] = selectedDate.split("-").map(Number);
   const current = new Date(y, m - 1, d);
   const dayOfWeek = current.getDay(); // 0 = Sun, 1 = Mon ...
@@ -45,6 +49,13 @@ export function WeeklyTimeline() {
     setSelectedDate(`${yr}-${mo}-${da}`);
   };
 
+  const handleDayClick = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    if (onSelectDay) {
+      onSelectDay(dateStr);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-zinc-950/80 border border-zinc-800/80 rounded-2xl overflow-hidden backdrop-blur-md">
       {/* Week Header Navigation */}
@@ -71,13 +82,13 @@ export function WeeklyTimeline() {
           </div>
         </div>
 
-        <span className="text-xs text-zinc-400">
-          Click any column to jump to that day&apos;s 24h timeline
+        <span className="text-xs text-blue-400 font-medium flex items-center gap-1">
+          Click any column to jump to Day Timeline <ArrowRight size={13} />
         </span>
       </div>
 
       {/* 7-Day Grid */}
-      <div className="grid grid-cols-7 flex-1 divide-x divide-zinc-800/60 overflow-y-auto min-h-[600px]">
+      <div className="grid grid-cols-7 flex-1 divide-x divide-zinc-800/60 overflow-y-auto min-h-[550px]">
         {weekDays.map((day) => {
           const dayTasks = tasks.filter((t) => t.scheduledDate === day.dateStr);
           const totalMins = dayTasks.reduce((acc, t) => acc + (t.estimatedMinutes || 0), 0);
@@ -85,36 +96,36 @@ export function WeeklyTimeline() {
           return (
             <div
               key={day.dateStr}
-              onClick={() => setSelectedDate(day.dateStr)}
-              className={`flex flex-col p-2.5 transition-colors cursor-pointer ${
+              onClick={() => handleDayClick(day.dateStr)}
+              className={`flex flex-col p-2.5 transition-all duration-150 cursor-pointer group ${
                 day.isSelected
-                  ? "bg-blue-950/15 ring-1 ring-inset ring-blue-500/40"
-                  : "hover:bg-zinc-900/40"
+                  ? "bg-blue-950/25 ring-2 ring-inset ring-blue-500/50"
+                  : "hover:bg-zinc-900/60"
               }`}
             >
               {/* Day Header */}
               <div className="flex flex-col items-center pb-2 border-b border-zinc-800/60 mb-2">
-                <span className="text-[11px] font-medium text-zinc-400 uppercase">
+                <span className="text-[11px] font-medium text-zinc-400 uppercase group-hover:text-blue-400 transition-colors">
                   {day.dayName}
                 </span>
                 <span
-                  className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mt-0.5 ${
+                  className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mt-0.5 transition-transform group-hover:scale-110 ${
                     day.isSelected
                       ? "bg-blue-600 text-white shadow-xs shadow-blue-500/30"
-                      : "text-zinc-200"
+                      : "text-zinc-200 group-hover:bg-zinc-800"
                   }`}
                 >
                   {day.dayNumber}
                 </span>
                 {totalMins > 0 && (
-                  <span className="text-[10px] text-zinc-500 mt-0.5">
+                  <span className="text-[10px] text-zinc-400 mt-0.5 font-medium">
                     {formatMinutes(totalMins)}
                   </span>
                 )}
               </div>
 
               {/* Day Task Pills */}
-              <div className="space-y-1.5 flex-1 overflow-y-auto">
+              <div className="space-y-1.5 flex-1 overflow-y-auto pointer-events-none">
                 {dayTasks.map((t) => {
                   const category = categories.find((c) => c.id === t.category);
                   const color = category?.color || "#3b82f6";
@@ -124,7 +135,7 @@ export function WeeklyTimeline() {
                       className={`p-1.5 rounded-lg border text-left transition-all ${
                         t.completed
                           ? "bg-zinc-900/40 border-zinc-850 opacity-60 line-through text-zinc-500"
-                          : "bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 text-zinc-200 shadow-2xs"
+                          : "bg-zinc-900/80 border-zinc-800 text-zinc-200 shadow-2xs"
                       }`}
                     >
                       <div className="flex items-center gap-1">
@@ -146,8 +157,8 @@ export function WeeklyTimeline() {
                 })}
 
                 {dayTasks.length === 0 && (
-                  <div className="h-full flex items-center justify-center text-center p-2 opacity-30 text-[10px] text-zinc-600">
-                    Empty
+                  <div className="h-28 flex items-center justify-center text-center p-2 opacity-30 text-[10px] text-zinc-500">
+                    + Add task
                   </div>
                 )}
               </div>

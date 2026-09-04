@@ -36,7 +36,7 @@ import {
 import { Button } from "@/components/ui/Button";
 
 function ScheduleApp() {
-  const { selectedDate, scheduleTask, habits } = useSchedule();
+  const { selectedDate, setSelectedDate, scheduleTask, habits } = useSchedule();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [mobileTab, setMobileTab] = useState<"planner" | "backlog" | "habits" | "focus">("planner");
   const [timelineView, setTimelineView] = useState<"day" | "week">("day");
@@ -79,6 +79,11 @@ function ScheduleApp() {
         taskData.estimatedMinutes || 30
       );
     }
+  };
+
+  const handleSelectDayFromWeek = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setTimelineView("day");
   };
 
   const getCenterSpanClass = () => {
@@ -200,7 +205,7 @@ function ScheduleApp() {
               {timelineView === "day" ? (
                 <DayTimeline startHour={6} endHour={23} />
               ) : (
-                <WeeklyTimeline />
+                <WeeklyTimeline onSelectDay={handleSelectDayFromWeek} />
               )}
             </div>
 
@@ -222,7 +227,7 @@ function ScheduleApp() {
                 {timelineView === "day" ? (
                   <DayTimeline startHour={6} endHour={23} />
                 ) : (
-                  <WeeklyTimeline />
+                  <WeeklyTimeline onSelectDay={handleSelectDayFromWeek} />
                 )}
               </div>
             )}
