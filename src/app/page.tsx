@@ -20,7 +20,19 @@ import { AnalyticsOverview } from "@/components/stats/AnalyticsOverview";
 import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
 import { ExportModal } from "@/components/ui/ExportModal";
 import { Task } from "@/lib/types";
-import { Sparkles, DownloadCloud, CalendarDays, Clock, Inbox, Flame, Timer } from "lucide-react";
+import {
+  Sparkles,
+  DownloadCloud,
+  CalendarDays,
+  Clock,
+  Inbox,
+  Flame,
+  Timer,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 function ScheduleApp() {
@@ -29,6 +41,10 @@ function ScheduleApp() {
   const [mobileTab, setMobileTab] = useState<"planner" | "backlog" | "habits" | "focus">("planner");
   const [timelineView, setTimelineView] = useState<"day" | "week">("day");
   const [isExportOpen, setIsExportOpen] = useState(false);
+
+  // Collapsible panels state for desktop
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -65,6 +81,15 @@ function ScheduleApp() {
     }
   };
 
+  // Determine dynamic grid layout based on collapsed states
+  const getCenterSpanClass = () => {
+    if (leftPanelOpen && rightPanelOpen) return "lg:col-span-5";
+    if (!leftPanelOpen && !rightPanelOpen) return "lg:col-span-12";
+    if (!leftPanelOpen && rightPanelOpen) return "lg:col-span-8";
+    if (leftPanelOpen && !rightPanelOpen) return "lg:col-span-8";
+    return "lg:col-span-5";
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -82,7 +107,7 @@ function ScheduleApp() {
               <div className="flex items-center gap-1.5">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-none">e-life</h1>
                 <span className="text-[9px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded-full">
-                  v1.4
+                  v1.5
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 hidden sm:block">
@@ -92,6 +117,29 @@ function ScheduleApp() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Desktop Panel Collapse Toggles */}
+            <div className="hidden lg:flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
+              <button
+                onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  leftPanelOpen ? "text-blue-400 bg-blue-500/10" : "text-zinc-500 hover:text-zinc-300"
+                }`}
+                title={leftPanelOpen ? "Collapse Left Panel (Backlog)" : "Expand Left Panel (Backlog)"}
+              >
+                {leftPanelOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
+              </button>
+
+              <button
+                onClick={() => setRightPanelOpen(!rightPanelOpen)}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  rightPanelOpen ? "text-blue-400 bg-blue-500/10" : "text-zinc-500 hover:text-zinc-300"
+                }`}
+                title={rightPanelOpen ? "Collapse Right Panel (Habits)" : "Expand Right Panel (Habits)"}
+              >
+                {rightPanelOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
+              </button>
+            </div>
+
             {/* View Mode Switcher (Day vs Week) */}
             <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
               <button
@@ -136,18 +184,20 @@ function ScheduleApp() {
           {/* Top Analytics Stats */}
           <AnalyticsOverview />
 
-          {/* Desktop 3-Column Grid */}
-          <div className="hidden lg:grid lg:grid-cols-12 gap-6 items-start">
+          {/* Desktop Responsive Collapsible Grid */}
+          <div className="hidden lg:grid lg:grid-cols-12 gap-5 items-start">
             {/* Left Column: Backlog Activity Drawer + Focus Pomodoro */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="h-[520px]">
-                <BacklogDrawer />
+            {leftPanelOpen && (
+              <div className="lg:col-span-4 space-y-4 animate-in fade-in duration-200">
+                <div className="h-[520px]">
+                  <BacklogDrawer />
+                </div>
+                <PomodoroTimer />
               </div>
-              <PomodoroTimer />
-            </div>
+            )}
 
-            {/* Center Column: Interactive Day or Week Timeline */}
-            <div className="lg:col-span-5 h-[760px]">
+            {/* Center Column: Interactive Day or Week Timeline (Expands when panels collapse) */}
+            <div className={`${getCenterSpanClass()} h-[760px] transition-all duration-300`}>
               {timelineView === "day" ? (
                 <DayTimeline startHour={6} endHour={23} />
               ) : (
@@ -156,12 +206,14 @@ function ScheduleApp() {
             </div>
 
             {/* Right Column: Habit Tracker & Consistency Heatmap */}
-            <div className="lg:col-span-3 space-y-4">
-              <div className="h-[520px]">
-                <HabitTracker />
+            {rightPanelOpen && (
+              <div className="lg:col-span-3 space-y-4 animate-in fade-in duration-200">
+                <div className="h-[520px]">
+                  <HabitTracker />
+                </div>
+                <HabitHeatmap habits={habits} />
               </div>
-              <HabitHeatmap habits={habits} />
-            </div>
+            )}
           </div>
 
           {/* Mobile Tab-Based View (Single Column for Small Screens) */}
