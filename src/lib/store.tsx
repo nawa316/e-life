@@ -200,6 +200,55 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateHabit = async (id: string, updates: Partial<Habit>) => {
+    setHabits((prev) =>
+      prev.map((h) => (h.id === id ? { ...h, ...updates } : h))
+    );
+
+    if (isSupabaseConfigured && supabase) {
+      const dbUpdates: any = {};
+      if (updates.title !== undefined) dbUpdates.title = updates.title;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.targetMinutes !== undefined) dbUpdates.target_minutes = updates.targetMinutes;
+      if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
+      if (updates.streak !== undefined) dbUpdates.streak = updates.streak;
+      if (updates.completedDates !== undefined) dbUpdates.completed_dates = updates.completedDates;
+
+      await supabase.from("habits").update(dbUpdates).eq("id", id);
+    }
+  };
+
+  const toggleHabitCompletion = async (habitId: string, date: string) => {
+    const habit = habits.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    const isDone = habit.completedDates.includes(date);
+    let newDates: string[];
+    let newStreak = habit.streak;
+
+    if (isDone) {
+      newDates = habit.completedDates.filter((d) => d !== date);
+      newStreak = Math.max(0, newStreak - 1);
+    } else {
+      newDates = [...habit.completedDates, date];
+      newStreak += 1;
+      try {
+        confetti({
+          particleCount: 60,
+          spread: 70,
+          origin: { y: 0.8 },
+          colors: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"],
+        });
+      } catch (e) {}
+    }
+
+    await updateHabit(habitId, {
+      completedDates: newDates,
+      streak: newStreak,
+    });
+  };
+
+  // Synchronized completion for tasks & habits
   const toggleTaskCompletion = async (id: string) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
@@ -215,6 +264,29 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       completed: nextState,
       completedAt: nextState ? new Date().toISOString() : undefined,
     });
+
+    // If this task is linked to a habit, sync the habit streak & completed dates
+    if (task.habitId) {
+      const taskDate = task.scheduledDate || selectedDate;
+      const linkedHabit = habits.find((h) => h.id === task.habitId);
+      if (linkedHabit) {
+        const isDateDoneInHabit = linkedHabit.completedDates.includes(taskDate);
+
+        if (nextState && !isDateDoneInHabit) {
+          // Add date and increment streak
+          await updateHabit(task.habitId, {
+            completedDates: [...linkedHabit.completedDates, taskDate],
+            streak: linkedHabit.streak + 1,
+          });
+        } else if (!nextState && isDateDoneInHabit) {
+          // Remove date and decrement streak
+          await updateHabit(task.habitId, {
+            completedDates: linkedHabit.completedDates.filter((d) => d !== taskDate),
+            streak: Math.max(0, linkedHabit.streak - 1),
+          });
+        }
+      }
+    }
   };
 
   const scheduleTask = async (
@@ -274,24 +346,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateHabit = async (id: string, updates: Partial<Habit>) => {
-    setHabits((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, ...updates } : h))
-    );
-
-    if (isSupabaseConfigured && supabase) {
-      const dbUpdates: any = {};
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.targetMinutes !== undefined) dbUpdates.target_minutes = updates.targetMinutes;
-      if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
-      if (updates.streak !== undefined) dbUpdates.streak = updates.streak;
-      if (updates.completedDates !== undefined) dbUpdates.completed_dates = updates.completedDates;
-
-      await supabase.from("habits").update(dbUpdates).eq("id", id);
-    }
-  };
-
   // When deleting a habit, also delete all scheduled instances linked to this habit
   const deleteHabit = async (id: string) => {
     setHabits((prev) => prev.filter((h) => h.id !== id));
@@ -303,36 +357,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         supabase.from("tasks").delete().eq("habit_id", id),
       ]);
     }
-  };
-
-  const toggleHabitCompletion = async (habitId: string, date: string) => {
-    const habit = habits.find((h) => h.id === habitId);
-    if (!habit) return;
-
-    const isDone = habit.completedDates.includes(date);
-    let newDates: string[];
-    let newStreak = habit.streak;
-
-    if (isDone) {
-      newDates = habit.completedDates.filter((d) => d !== date);
-      newStreak = Math.max(0, newStreak - 1);
-    } else {
-      newDates = [...habit.completedDates, date];
-      newStreak += 1;
-      try {
-        confetti({
-          particleCount: 60,
-          spread: 70,
-          origin: { y: 0.8 },
-          colors: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"],
-        });
-      } catch (e) {}
-    }
-
-    await updateHabit(habitId, {
-      completedDates: newDates,
-      streak: newStreak,
-    });
   };
 
   const scheduleHabitForToday = async (habitId: string) => {
