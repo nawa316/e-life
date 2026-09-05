@@ -5,16 +5,59 @@ import { useDroppable } from "@dnd-kit/core";
 import { useSchedule } from "@/lib/store";
 import { TimeBlock } from "./TimeBlock";
 import { minutesToTime, timeToMinutes } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Sparkles } from "lucide-react";
-import { Button } from "../ui/Button";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from "lucide-react";
 
 interface DayTimelineProps {
   startHour?: number;
   endHour?: number;
 }
 
+// Sub-component for each individual hour drop slot
+function TimelineHourSlot({
+  hour,
+  startHour,
+  pixelsPerMinute,
+  isHalfHour = false,
+}: {
+  hour: number;
+  startHour: number;
+  pixelsPerMinute: number;
+  isHalfHour?: boolean;
+}) {
+  const slotMinutes = hour * 60 + (isHalfHour ? 30 : 0);
+  const timeStr = minutesToTime(slotMinutes);
+  const slotId = `slot-${timeStr}`;
+
+  const { isOver, setNodeRef } = useDroppable({
+    id: slotId,
+    data: {
+      type: "timeline-slot",
+      time: timeStr,
+    },
+  });
+
+  const topOffset = (slotMinutes - startHour * 60) * pixelsPerMinute;
+  const height = 30 * pixelsPerMinute;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        top: `${topOffset}px`,
+        height: `${height}px`,
+      }}
+      className={`absolute left-12 right-0 transition-colors pointer-events-auto rounded-lg ${
+        isOver
+          ? "bg-blue-500/20 border-2 border-dashed border-blue-400 z-20"
+          : "hover:bg-zinc-850/40"
+      }`}
+      title={`Drop to schedule at ${timeStr}`}
+    />
+  );
+}
+
 export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
-  const { selectedDate, setSelectedDate, tasks, scheduleTask } = useSchedule();
+  const { selectedDate, setSelectedDate, tasks } = useSchedule();
   const timelineRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState<string>("");
 
@@ -22,10 +65,11 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
   const totalHours = endHour - startHour;
   const hours = Array.from({ length: totalHours }, (_, i) => startHour + i);
 
-  const { isOver, setNodeRef } = useDroppable({
+  // General timeline container droppable fallback
+  const { isOver: isGeneralOver, setNodeRef: setGeneralDroppableRef } = useDroppable({
     id: "timeline-droppable",
     data: {
-      type: "timeline",
+      type: "timeline-general",
       date: selectedDate,
     },
   });
@@ -55,16 +99,6 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
     const newM = String(dateObj.getMonth() + 1).padStart(2, "0");
     const newD = String(dateObj.getDate()).padStart(2, "0");
     setSelectedDate(`${newY}-${newM}-${newD}`);
-  };
-
-  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!timelineRef.current) return;
-    const rect = timelineRef.current.getBoundingClientRect();
-    const clickY = e.clientY - rect.top;
-    const minutesFromStart = Math.floor(clickY / PIXELS_PER_MINUTE);
-    const snappedMinutes = Math.floor(minutesFromStart / 15) * 15; // 15m snap
-    const calculatedMinutes = startHour * 60 + snappedMinutes;
-    const timeStr = minutesToTime(calculatedMinutes);
   };
 
   // Format header date string
@@ -148,26 +182,43 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
         </div>
       </div>
 
-      {/* Interactive Timeline Body */}
+      {/* Interactive Timeline Body with Droppable Slots */}
       <div
-        ref={setNodeRef}
+        ref={setGeneralDroppableRef}
         className={`flex-1 overflow-y-auto relative p-3 sm:p-4 transition-colors ${
-          isOver ? "bg-blue-950/15" : ""
+          isGeneralOver ? "bg-blue-950/10" : ""
         }`}
       >
         <div
           ref={timelineRef}
-          onClick={handleTimelineClick}
           className="relative min-h-full"
           style={{ height: `${totalHours * 60 * PIXELS_PER_MINUTE}px` }}
         >
+          {/* Individual Droppable Half-Hour Time Slots */}
+          {hours.map((hour) => (
+            <React.Fragment key={`slots-${hour}`}>
+              <TimelineHourSlot
+                hour={hour}
+                startHour={startHour}
+                pixelsPerMinute={PIXELS_PER_MINUTE}
+                isHalfHour={false}
+              />
+              <TimelineHourSlot
+                hour={hour}
+                startHour={startHour}
+                pixelsPerMinute={PIXELS_PER_MINUTE}
+                isHalfHour={true}
+              />
+            </React.Fragment>
+          ))}
+
           {/* Hour grid lines and labels */}
           {hours.map((hour) => {
             const hourOffset = (hour - startHour) * 60 * PIXELS_PER_MINUTE;
             return (
               <div
                 key={hour}
-                className="absolute left-0 right-0 flex items-start"
+                className="absolute left-0 right-0 flex items-start pointer-events-none"
                 style={{ top: `${hourOffset}px` }}
               >
                 <div className="w-11 sm:w-12 text-right pr-2 sm:pr-3 -mt-2 text-[11px] sm:text-xs font-mono font-medium text-zinc-500 select-none">

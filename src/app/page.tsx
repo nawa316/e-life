@@ -51,7 +51,7 @@ function ScheduleApp() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5,
       },
     })
   );
@@ -72,7 +72,21 @@ function ScheduleApp() {
     const taskData = active.data.current?.task as Task;
     if (!taskData) return;
 
-    if (over.id === "timeline-droppable") {
+    const overData = over.data.current;
+
+    // 1. Dropped on a specific half-hour / hour slot
+    if (overData?.type === "timeline-slot" && overData.time) {
+      scheduleTask(
+        taskData.id,
+        selectedDate,
+        overData.time,
+        taskData.estimatedMinutes || 30
+      );
+      return;
+    }
+
+    // 2. Dropped on the general timeline droppable area
+    if (over.id === "timeline-droppable" || overData?.type === "timeline-general") {
       const currentStart = taskData.startTime || "09:00";
       scheduleTask(
         taskData.id,
@@ -258,7 +272,7 @@ function ScheduleApp() {
                 )}
               </div>
 
-              {/* 3. MOBILE TAB-BASED VIEW (Fills dynamic full height smoothly) */}
+              {/* 3. MOBILE TAB-BASED VIEW */}
               <div className="block lg:hidden">
                 {mobileTab === "planner" && (
                   <div className="h-[calc(100vh-140px)] min-h-[480px]">
