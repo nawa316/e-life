@@ -104,26 +104,26 @@ function ScheduleApp() {
     >
       <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col">
         {/* Navigation Header */}
-        <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-              <Sparkles size={17} className="text-white" />
+        <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+              <Sparkles size={16} className="text-white" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-none">e-life</h1>
                 <span className="text-[9px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded-full">
-                  v1.9
+                  v2.0
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 hidden sm:block">
+              <p className="text-[11px] text-zinc-400 hidden md:block">
                 Daily & Weekly Scheduler, Backlog, Habits & Analytics
               </p>
             </div>
           </div>
 
-          {/* Center Navigation Menu: Planner vs Statistics */}
-          <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
+          {/* Desktop Center Switcher: Planner vs Statistics */}
+          <div className="hidden lg:flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
             <button
               onClick={() => {
                 setActiveView("planner");
@@ -154,8 +154,8 @@ function ScheduleApp() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Desktop Panel Collapse Toggles (Only in Planner mode) */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Desktop Panel Collapse Toggles */}
             {activeView === "planner" && (
               <div className="hidden lg:flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
                 <button
@@ -181,50 +181,48 @@ function ScheduleApp() {
             )}
 
             {/* View Mode Switcher (Day vs Week) */}
-            {activeView === "planner" && (
-              <div className="hidden sm:flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
-                <button
-                  onClick={() => setTimelineView("day")}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    timelineView === "day"
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <Clock size={12} />
-                  <span>Day</span>
-                </button>
-                <button
-                  onClick={() => setTimelineView("week")}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    timelineView === "week"
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <CalendarDays size={12} />
-                  <span>Week</span>
-                </button>
-              </div>
-            )}
+            <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-0.5">
+              <button
+                onClick={() => setTimelineView("day")}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  timelineView === "day"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Clock size={12} />
+                <span>Day</span>
+              </button>
+              <button
+                onClick={() => setTimelineView("week")}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  timelineView === "week"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <CalendarDays size={12} />
+                <span>Week</span>
+              </button>
+            </div>
 
             {/* Sync / Export Button */}
             <Button
               size="sm"
               variant="outline"
               onClick={() => setIsExportOpen(true)}
-              className="px-2.5 py-1 text-xs"
+              className="px-2 py-1 text-xs sm:px-2.5"
             >
               <DownloadCloud size={13} />
-              <span className="hidden sm:inline">Sync & Backup</span>
+              <span className="hidden sm:inline">Backup</span>
             </Button>
           </div>
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 max-w-[1700px] w-full mx-auto p-3 sm:p-5 pb-28 lg:pb-6">
+        <main className="flex-1 max-w-[1700px] w-full mx-auto p-2.5 sm:p-5 pb-24 lg:pb-6">
           {/* 1. DEDICATED STATISTICS VIEW */}
-          {activeView === "stats" ? (
+          {activeView === "stats" || mobileTab === "stats" ? (
             <AnalyticsView />
           ) : (
             <>
@@ -260,10 +258,10 @@ function ScheduleApp() {
                 )}
               </div>
 
-              {/* 3. MOBILE TAB-BASED VIEW */}
-              <div className="block lg:hidden space-y-4">
+              {/* 3. MOBILE TAB-BASED VIEW (Fills dynamic full height smoothly) */}
+              <div className="block lg:hidden">
                 {mobileTab === "planner" && (
-                  <div className="h-[calc(100vh-220px)] min-h-[460px]">
+                  <div className="h-[calc(100vh-140px)] min-h-[480px]">
                     {timelineView === "day" ? (
                       <DayTimeline startHour={6} endHour={23} />
                     ) : (
@@ -273,14 +271,14 @@ function ScheduleApp() {
                 )}
 
                 {mobileTab === "backlog" && (
-                  <div className="h-[calc(100vh-220px)] min-h-[460px]">
+                  <div className="h-[calc(100vh-140px)] min-h-[480px]">
                     <BacklogDrawer />
                   </div>
                 )}
 
                 {mobileTab === "habits" && (
-                  <div className="space-y-4 pb-6">
-                    <div className="h-[480px]">
+                  <div className="h-[calc(100vh-140px)] min-h-[480px] overflow-y-auto space-y-4 pb-4">
+                    <div className="h-[460px]">
                       <HabitTracker />
                     </div>
                     <HabitHeatmap habits={habits} />
@@ -288,14 +286,8 @@ function ScheduleApp() {
                 )}
 
                 {mobileTab === "focus" && (
-                  <div className="pt-2 pb-6">
+                  <div className="h-[calc(100vh-140px)] min-h-[480px] overflow-y-auto pt-1">
                     <PomodoroTimer />
-                  </div>
-                )}
-
-                {mobileTab === "stats" && (
-                  <div className="pb-6">
-                    <AnalyticsView />
                   </div>
                 )}
               </div>
@@ -303,9 +295,9 @@ function ScheduleApp() {
           )}
         </main>
 
-        {/* Guaranteed Fixed Mobile Bottom Navigation Bar */}
+        {/* Optimized Mobile Bottom Navigation Bar */}
         <div className="block lg:hidden fixed bottom-0 left-0 right-0 z-50 pointer-events-auto">
-          <nav className="bg-zinc-950/95 border-t border-zinc-800/90 backdrop-blur-xl px-2 py-2 flex items-center justify-around shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.5)] safe-area-pb">
+          <nav className="bg-zinc-950/95 border-t border-zinc-800/90 backdrop-blur-xl px-2 py-1.5 flex items-center justify-around shadow-[0_-10px_25px_-5px_rgba(0,0,0,0.5)] safe-area-pb">
             <button
               type="button"
               onClick={() => {
@@ -319,7 +311,7 @@ function ScheduleApp() {
               }`}
             >
               <Clock size={18} />
-              <span className="text-[10px] tracking-wide mt-1">Schedule</span>
+              <span className="text-[10px] tracking-wide mt-0.5">Schedule</span>
             </button>
 
             <button
@@ -335,7 +327,7 @@ function ScheduleApp() {
               }`}
             >
               <Inbox size={18} />
-              <span className="text-[10px] tracking-wide mt-1">Backlog</span>
+              <span className="text-[10px] tracking-wide mt-0.5">Backlog</span>
             </button>
 
             <button
@@ -351,7 +343,7 @@ function ScheduleApp() {
               }`}
             >
               <Flame size={18} />
-              <span className="text-[10px] tracking-wide mt-1">Habits</span>
+              <span className="text-[10px] tracking-wide mt-0.5">Habits</span>
             </button>
 
             <button
@@ -367,7 +359,7 @@ function ScheduleApp() {
               }`}
             >
               <Timer size={18} />
-              <span className="text-[10px] tracking-wide mt-1">Focus</span>
+              <span className="text-[10px] tracking-wide mt-0.5">Focus</span>
             </button>
 
             <button
@@ -377,13 +369,13 @@ function ScheduleApp() {
                 setMobileTab("stats");
               }}
               className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-                activeView === "stats"
+                mobileTab === "stats"
                   ? "text-emerald-400 bg-emerald-500/15 font-semibold"
                   : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               <BarChart3 size={18} />
-              <span className="text-[10px] tracking-wide mt-1">Stats</span>
+              <span className="text-[10px] tracking-wide mt-0.5">Stats</span>
             </button>
           </nav>
         </div>
