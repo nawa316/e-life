@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ScheduleClientProvider } from "@/components/providers/ScheduleClientProvider";
 
 export const metadata: Metadata = {
   title: "e-life | Daily Interactive Scheduler, Habits & Focus",
@@ -43,7 +44,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="antialiased bg-[#09090b] text-zinc-100 min-h-screen selection:bg-blue-600 selection:text-white">
-        {children}
+        <ScheduleClientProvider>
+          {children}
+        </ScheduleClientProvider>
       </body>
     </html>
   );

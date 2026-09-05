@@ -465,9 +465,5 @@ function ScheduleApp() {
 }
 
 export default function Home() {
-  return (
-    <ScheduleProvider>
-      <ScheduleApp />
-    </ScheduleProvider>
-  );
+  return <ScheduleApp />;
 }

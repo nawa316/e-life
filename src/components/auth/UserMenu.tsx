@@ -2,12 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useSchedule } from "@/lib/store";
-import { AuthModal } from "./AuthModal";
+import Link from "next/link";
 import { User, LogIn, LogOut, Cloud, CloudCheck, RefreshCw, Sparkles, ChevronDown } from "lucide-react";
 
 export function UserMenu() {
   const { user, signOut, isCloudSynced, syncLocalDataToCloud } = useSchedule();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -64,15 +63,14 @@ export function UserMenu() {
             <ChevronDown size={13} className="text-zinc-500 group-hover:text-zinc-300 transition-transform" />
           </button>
         ) : (
-          /* Guest / Sign-In Button */
-          <button
-            type="button"
-            onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-sm shadow-blue-500/20 active:scale-95"
+          /* Dedicated Auth Page Link */
+          <Link
+            href="/auth"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-sm shadow-blue-500/20 active:scale-95"
           >
             <Cloud size={14} />
             <span>Sign In / Sync</span>
-          </button>
+          </Link>
         )}
 
         {/* Dropdown Menu */}
@@ -117,9 +115,6 @@ export function UserMenu() {
           </div>
         )}
       </div>
-
-      {/* Authentication Modal */}
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </>
   );
 }
