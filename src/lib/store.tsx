@@ -179,19 +179,19 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Helper to load guest data from LocalStorage
+  // Helper to load guest data from LocalStorage (defaults to blank/empty)
   const loadGuestData = useCallback(() => {
     try {
-      const storedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
-      const storedHabits = localStorage.getItem(HABITS_STORAGE_KEY);
-      const storedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+      const storedTasks = localStorage.getItem("elife_tasks_guest");
+      const storedHabits = localStorage.getItem("elife_habits_guest");
+      const storedCategories = localStorage.getItem("elife_categories_guest");
 
-      setTasks(storedTasks ? JSON.parse(storedTasks) : initialTasks);
-      setHabits(storedHabits ? JSON.parse(storedHabits) : initialHabits);
+      setTasks(storedTasks ? JSON.parse(storedTasks) : []);
+      setHabits(storedHabits ? JSON.parse(storedHabits) : []);
       setCategories(storedCategories ? JSON.parse(storedCategories) : initialCategories);
     } catch (e) {
-      setTasks(initialTasks);
-      setHabits(initialHabits);
+      setTasks([]);
+      setHabits([]);
       setCategories(initialCategories);
     }
     setIsCloudSynced(false);
@@ -245,17 +245,23 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     initAuthAndData();
   }, [loadUserData, loadGuestData]);
 
-  // Sync state to LocalStorage for offline cache
+  // Sync state to LocalStorage for offline cache (user-scoped)
   useEffect(() => {
     if (!isLoaded) return;
     try {
-      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
-      localStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(habits));
-      localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+      if (user) {
+        localStorage.setItem(`elife_tasks_user_${user.id}`, JSON.stringify(tasks));
+        localStorage.setItem(`elife_habits_user_${user.id}`, JSON.stringify(habits));
+        localStorage.setItem(`elife_categories_user_${user.id}`, JSON.stringify(categories));
+      } else {
+        localStorage.setItem("elife_tasks_guest", JSON.stringify(tasks));
+        localStorage.setItem("elife_habits_guest", JSON.stringify(habits));
+        localStorage.setItem("elife_categories_guest", JSON.stringify(categories));
+      }
     } catch (e) {
       console.error("Failed saving to localStorage cache", e);
     }
-  }, [tasks, habits, categories, isLoaded]);
+  }, [tasks, habits, categories, isLoaded, user]);
 
   // Auth Methods
   const signIn = async (email: string, password: string) => {
@@ -324,7 +330,18 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     setSession(null);
-    loadGuestData();
+    setTasks([]);
+    setHabits([]);
+    setCategories(initialCategories);
+    setIsCloudSynced(false);
+    try {
+      localStorage.removeItem("elife_tasks_guest");
+      localStorage.removeItem("elife_habits_guest");
+      localStorage.removeItem("elife_categories_guest");
+      localStorage.removeItem("elife_tasks_v1");
+      localStorage.removeItem("elife_habits_v1");
+      localStorage.removeItem("elife_categories_v1");
+    } catch (e) {}
   };
 
   // Sync local data to logged-in user cloud account
