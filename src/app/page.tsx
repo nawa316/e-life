@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import {
   DndContext,
   DragEndEvent,
@@ -21,7 +22,6 @@ import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
 import { ExportModal } from "@/components/ui/ExportModal";
 import { Task } from "@/lib/types";
 import {
-  Sparkles,
   DownloadCloud,
   CalendarDays,
   Clock,
@@ -117,11 +117,17 @@ function ScheduleApp() {
       onDragEnd={handleDragEnd}
     >
       <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col">
-        {/* Navigation Header */}
+        {/* Navigation Header with official logo */}
         <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-              <Sparkles size={16} className="text-white" />
+            <div className="w-8 h-8 relative rounded-xl overflow-hidden shadow-lg shadow-blue-500/20 shrink-0 border border-blue-500/30">
+              <Image
+                src="/logo.svg"
+                alt="e-life Logo"
+                fill
+                priority
+                className="object-cover"
+              />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
