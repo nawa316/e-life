@@ -25,6 +25,7 @@ import { AnalyticsView } from "@/components/stats/AnalyticsView";
 import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
 import { ExportModal } from "@/components/ui/ExportModal";
 import { Task } from "@/lib/types";
+import { UserMenu } from "@/components/auth/UserMenu";
 import {
   DownloadCloud,
   CalendarDays,
@@ -277,6 +278,9 @@ function ScheduleApp() {
               <DownloadCloud size={13} />
               <span className="hidden sm:inline">Backup</span>
             </Button>
+
+            {/* Account & Cloud Sync Menu */}
+            <UserMenu />
           </div>
         </header>
 

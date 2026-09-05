@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import type { User, Session } from "@supabase/supabase-js";
 import { Category, Habit, Task } from "./types";
 import { initialCategories, initialHabits, initialTasks } from "./mockData";
 import { getTodayDateString, addMinutesToTime } from "./utils";
@@ -14,6 +15,14 @@ interface ScheduleContextType {
   habits: Habit[];
   categories: Category[];
   isUsingSupabase: boolean;
+  user: User | null;
+  session: Session | null;
+  authLoading: boolean;
+  isCloudSynced: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: string | null; needsConfirmation?: boolean }>;
+  signOut: () => Promise<void>;
+  syncLocalDataToCloud: () => Promise<void>;
   addTask: (task: Omit<Task, "id" | "createdAt">) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -42,108 +51,332 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from Supabase or Fallback to LocalStorage
-  useEffect(() => {
-    async function loadData() {
-      if (isSupabaseConfigured && supabase) {
-        try {
-          const [tasksRes, habitsRes, catsRes] = await Promise.all([
-            supabase.from("tasks").select("*"),
-            supabase.from("habits").select("*"),
-            supabase.from("categories").select("*"),
-          ]);
+  // Auth state
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isCloudSynced, setIsCloudSynced] = useState(false);
 
-          if (tasksRes.data && tasksRes.data.length > 0) {
-            setTasks(
-              tasksRes.data.map((t) => ({
+  // Helper to load user-scoped data from Supabase
+  const loadUserData = useCallback(async (currentUser: User) => {
+    if (!isSupabaseConfigured || !supabase) return;
+
+    try {
+      const [tasksRes, habitsRes, catsRes] = await Promise.all([
+        supabase.from("tasks").select("*").eq("user_id", currentUser.id),
+        supabase.from("habits").select("*").eq("user_id", currentUser.id),
+        supabase.from("categories").select("*").eq("user_id", currentUser.id),
+      ]);
+
+      let loadedTasks: Task[] = [];
+      let loadedHabits: Habit[] = [];
+      let loadedCats: Category[] = initialCategories;
+
+      if (tasksRes.data && tasksRes.data.length > 0) {
+        loadedTasks = tasksRes.data.map((t) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || undefined,
+          category: t.category,
+          priority: t.priority,
+          estimatedMinutes: t.estimated_minutes,
+          completed: t.completed,
+          completedAt: t.completed_at || undefined,
+          scheduledDate: t.scheduled_date || undefined,
+          startTime: t.start_time || undefined,
+          endTime: t.end_time || undefined,
+          isHabitInstance: t.is_habit_instance,
+          habitId: t.habit_id || undefined,
+          tags: t.tags || [],
+          createdAt: t.created_at,
+        }));
+      }
+
+      if (habitsRes.data && habitsRes.data.length > 0) {
+        loadedHabits = habitsRes.data.map((h) => ({
+          id: h.id,
+          title: h.title,
+          description: h.description || undefined,
+          category: h.category,
+          targetMinutes: h.target_minutes,
+          preferredTime: h.preferred_time || undefined,
+          frequency: h.frequency,
+          streak: h.streak || 0,
+          completedDates: h.completed_dates || [],
+          icon: h.icon || "Flame",
+          color: h.color || "#f59e0b",
+          createdAt: h.created_at,
+        }));
+      }
+
+      if (catsRes.data && catsRes.data.length > 0) {
+        loadedCats = catsRes.data.map((c) => ({
+          id: c.id,
+          name: c.name,
+          color: c.color,
+          icon: c.icon || undefined,
+        }));
+      }
+
+      // If user is brand new and has no data in cloud, initialize with defaults
+      if (loadedTasks.length === 0 && loadedHabits.length === 0) {
+        try {
+          const storedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
+          const storedHabits = localStorage.getItem(HABITS_STORAGE_KEY);
+          const initialT: Task[] = storedTasks ? JSON.parse(storedTasks) : initialTasks;
+          const initialH: Habit[] = storedHabits ? JSON.parse(storedHabits) : initialHabits;
+
+          loadedTasks = initialT;
+          loadedHabits = initialH;
+
+          // Push initial data to Supabase for the user
+          await Promise.all([
+            supabase.from("tasks").insert(
+              initialT.map((t) => ({
                 id: t.id,
+                user_id: currentUser.id,
                 title: t.title,
-                description: t.description || undefined,
+                description: t.description || null,
                 category: t.category,
                 priority: t.priority,
-                estimatedMinutes: t.estimated_minutes,
+                estimated_minutes: t.estimatedMinutes,
                 completed: t.completed,
-                completedAt: t.completed_at || undefined,
-                scheduledDate: t.scheduled_date || undefined,
-                startTime: t.start_time || undefined,
-                endTime: t.end_time || undefined,
-                isHabitInstance: t.is_habit_instance,
-                habitId: t.habit_id || undefined,
-                tags: t.tags || [],
-                createdAt: t.created_at,
+                scheduled_date: t.scheduledDate || null,
+                start_time: t.startTime || null,
+                end_time: t.endTime || null,
+                is_habit_instance: t.isHabitInstance || false,
+                habit_id: t.habitId || null,
               }))
-            );
-          } else {
-            setTasks(initialTasks);
-          }
-
-          if (habitsRes.data && habitsRes.data.length > 0) {
-            setHabits(
-              habitsRes.data.map((h) => ({
+            ),
+            supabase.from("habits").insert(
+              initialH.map((h) => ({
                 id: h.id,
+                user_id: currentUser.id,
                 title: h.title,
-                description: h.description || undefined,
+                description: h.description || null,
                 category: h.category,
-                targetMinutes: h.target_minutes,
-                preferredTime: h.preferred_time || undefined,
+                target_minutes: h.targetMinutes,
+                preferred_time: h.preferredTime || "08:00",
                 frequency: h.frequency,
                 streak: h.streak || 0,
-                completedDates: h.completed_dates || [],
-                icon: h.icon || "Sparkles",
-                color: h.color || "#3b82f6",
-                createdAt: h.created_at,
+                completed_dates: h.completedDates || [],
+                icon: h.icon || "Flame",
+                color: h.color || "#f59e0b",
               }))
-            );
-          } else {
-            setHabits(initialHabits);
-          }
-
-          if (catsRes.data && catsRes.data.length > 0) {
-            setCategories(catsRes.data);
-          } else {
-            setCategories(initialCategories);
-          }
-
-          setIsLoaded(true);
-          return;
-        } catch (err) {
-          console.error("Supabase load failed, falling back to localStorage", err);
+            ),
+          ]);
+        } catch (seedErr) {
+          console.error("Auto-seed to Supabase error:", seedErr);
         }
       }
 
-      // LocalStorage fallback
-      try {
-        const storedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
-        const storedHabits = localStorage.getItem(HABITS_STORAGE_KEY);
-        const storedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY);
-
-        setTasks(storedTasks ? JSON.parse(storedTasks) : initialTasks);
-        setHabits(storedHabits ? JSON.parse(storedHabits) : initialHabits);
-        setCategories(storedCategories ? JSON.parse(storedCategories) : initialCategories);
-      } catch (e) {
-        setTasks(initialTasks);
-        setHabits(initialHabits);
-        setCategories(initialCategories);
-      } finally {
-        setIsLoaded(true);
-      }
+      setTasks(loadedTasks);
+      setHabits(loadedHabits);
+      setCategories(loadedCats);
+      setIsCloudSynced(true);
+    } catch (err) {
+      console.error("Error loading user data from Supabase:", err);
     }
-
-    loadData();
   }, []);
 
-  // Save changes to localStorage if not using Supabase
+  // Helper to load guest data from LocalStorage
+  const loadGuestData = useCallback(() => {
+    try {
+      const storedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
+      const storedHabits = localStorage.getItem(HABITS_STORAGE_KEY);
+      const storedCategories = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+
+      setTasks(storedTasks ? JSON.parse(storedTasks) : initialTasks);
+      setHabits(storedHabits ? JSON.parse(storedHabits) : initialHabits);
+      setCategories(storedCategories ? JSON.parse(storedCategories) : initialCategories);
+    } catch (e) {
+      setTasks(initialTasks);
+      setHabits(initialHabits);
+      setCategories(initialCategories);
+    }
+    setIsCloudSynced(false);
+  }, []);
+
+  // Initialize Auth & Data Loading
   useEffect(() => {
-    if (!isLoaded || isSupabaseConfigured) return;
+    async function initAuthAndData() {
+      if (!isSupabaseConfigured || !supabase) {
+        loadGuestData();
+        setAuthLoading(false);
+        setIsLoaded(true);
+        return;
+      }
+
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+
+        if (initialSession?.user) {
+          await loadUserData(initialSession.user);
+        } else {
+          loadGuestData();
+        }
+      } catch (err) {
+        console.error("Auth init error:", err);
+        loadGuestData();
+      } finally {
+        setAuthLoading(false);
+        setIsLoaded(true);
+      }
+
+      // Listen for auth state changes (login, logout, refresh)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          await loadUserData(newSession.user);
+        } else {
+          loadGuestData();
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+
+    initAuthAndData();
+  }, [loadUserData, loadGuestData]);
+
+  // Sync state to LocalStorage for offline cache
+  useEffect(() => {
+    if (!isLoaded) return;
     try {
       localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
       localStorage.setItem(HABITS_STORAGE_KEY, JSON.stringify(habits));
       localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
     } catch (e) {
-      console.error("Failed saving to localStorage", e);
+      console.error("Failed saving to localStorage cache", e);
     }
   }, [tasks, habits, categories, isLoaded]);
 
+  // Auth Methods
+  const signIn = async (email: string, password: string) => {
+    if (!isSupabaseConfigured || !supabase) {
+      return { error: "Supabase is not configured." };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (data.user) {
+        setUser(data.user);
+        setSession(data.session);
+        await loadUserData(data.user);
+      }
+
+      return { error: null };
+    } catch (err: any) {
+      return { error: err?.message || "Sign in failed" };
+    }
+  };
+
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    if (!isSupabaseConfigured || !supabase) {
+      return { error: "Supabase is not configured." };
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName || email.split("@")[0],
+          },
+        },
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (data.session && data.user) {
+        setUser(data.user);
+        setSession(data.session);
+        await loadUserData(data.user);
+        return { error: null, needsConfirmation: false };
+      }
+
+      return { error: null, needsConfirmation: true };
+    } catch (err: any) {
+      return { error: err?.message || "Sign up failed" };
+    }
+  };
+
+  const signOut = async () => {
+    if (isSupabaseConfigured && supabase) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
+    setSession(null);
+    loadGuestData();
+  };
+
+  // Sync local data to logged-in user cloud account
+  const syncLocalDataToCloud = async () => {
+    if (!user || !isSupabaseConfigured || !supabase) return;
+
+    try {
+      if (tasks.length > 0) {
+        const taskPayload = tasks.map((t) => ({
+          id: t.id,
+          user_id: user.id,
+          title: t.title,
+          description: t.description || null,
+          category: t.category,
+          priority: t.priority,
+          estimated_minutes: t.estimatedMinutes,
+          completed: t.completed,
+          completed_at: t.completedAt || null,
+          scheduled_date: t.scheduledDate || null,
+          start_time: t.startTime || null,
+          end_time: t.endTime || null,
+          is_habit_instance: t.isHabitInstance || false,
+          habit_id: t.habitId || null,
+        }));
+        await supabase.from("tasks").upsert(taskPayload, { onConflict: "id" });
+      }
+
+      if (habits.length > 0) {
+        const habitPayload = habits.map((h) => ({
+          id: h.id,
+          user_id: user.id,
+          title: h.title,
+          description: h.description || null,
+          category: h.category,
+          target_minutes: h.targetMinutes,
+          preferred_time: h.preferredTime || "08:00",
+          frequency: h.frequency,
+          streak: h.streak || 0,
+          completed_dates: h.completedDates || [],
+          icon: h.icon || "Flame",
+          color: h.color || "#f59e0b",
+        }));
+        await supabase.from("habits").upsert(habitPayload, { onConflict: "id" });
+      }
+
+      setIsCloudSynced(true);
+    } catch (err) {
+      console.error("Manual cloud sync failed:", err);
+    }
+  };
+
+  // Task & Habit Actions
   const addTask = async (taskData: Omit<Task, "id" | "createdAt">) => {
     const newTask: Task = {
       ...taskData,
@@ -152,12 +385,13 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     };
     setTasks((prev) => [newTask, ...prev]);
 
-    if (isSupabaseConfigured && supabase) {
+    if (user && isSupabaseConfigured && supabase) {
       await supabase.from("tasks").insert([
         {
           id: newTask.id,
+          user_id: user.id,
           title: newTask.title,
-          description: newTask.description,
+          description: newTask.description || null,
           category: newTask.category,
           priority: newTask.priority,
           estimated_minutes: newTask.estimatedMinutes,
@@ -177,26 +411,27 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
     );
 
-    if (isSupabaseConfigured && supabase) {
-      const dbUpdates: any = {};
+    if (user && isSupabaseConfigured && supabase) {
+      const dbUpdates: any = { updated_at: new Date().toISOString() };
       if (updates.title !== undefined) dbUpdates.title = updates.title;
       if (updates.description !== undefined) dbUpdates.description = updates.description;
       if (updates.category !== undefined) dbUpdates.category = updates.category;
       if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
       if (updates.estimatedMinutes !== undefined) dbUpdates.estimated_minutes = updates.estimatedMinutes;
       if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
+      if (updates.completedAt !== undefined) dbUpdates.completed_at = updates.completedAt;
       if (updates.scheduledDate !== undefined) dbUpdates.scheduled_date = updates.scheduledDate;
       if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
       if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
 
-      await supabase.from("tasks").update(dbUpdates).eq("id", id);
+      await supabase.from("tasks").update(dbUpdates).eq("id", id).eq("user_id", user.id);
     }
   };
 
   const deleteTask = async (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from("tasks").delete().eq("id", id);
+    if (user && isSupabaseConfigured && supabase) {
+      await supabase.from("tasks").delete().eq("id", id).eq("user_id", user.id);
     }
   };
 
@@ -205,16 +440,20 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       prev.map((h) => (h.id === id ? { ...h, ...updates } : h))
     );
 
-    if (isSupabaseConfigured && supabase) {
-      const dbUpdates: any = {};
+    if (user && isSupabaseConfigured && supabase) {
+      const dbUpdates: any = { updated_at: new Date().toISOString() };
       if (updates.title !== undefined) dbUpdates.title = updates.title;
       if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.category !== undefined) dbUpdates.category = updates.category;
       if (updates.targetMinutes !== undefined) dbUpdates.target_minutes = updates.targetMinutes;
+      if (updates.preferredTime !== undefined) dbUpdates.preferred_time = updates.preferredTime;
       if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
       if (updates.streak !== undefined) dbUpdates.streak = updates.streak;
       if (updates.completedDates !== undefined) dbUpdates.completed_dates = updates.completedDates;
+      if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
+      if (updates.color !== undefined) dbUpdates.color = updates.color;
 
-      await supabase.from("habits").update(dbUpdates).eq("id", id);
+      await supabase.from("habits").update(dbUpdates).eq("id", id).eq("user_id", user.id);
     }
   };
 
@@ -327,34 +566,34 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     };
     setHabits((prev) => [...prev, newHabit]);
 
-    if (isSupabaseConfigured && supabase) {
+    if (user && isSupabaseConfigured && supabase) {
       await supabase.from("habits").insert([
         {
           id: newHabit.id,
+          user_id: user.id,
           title: newHabit.title,
-          description: newHabit.description,
+          description: newHabit.description || null,
           category: newHabit.category,
           target_minutes: newHabit.targetMinutes,
-          preferred_time: newHabit.preferredTime,
+          preferred_time: newHabit.preferredTime || "08:00",
           frequency: newHabit.frequency,
           streak: 0,
           completed_dates: [],
-          icon: newHabit.icon,
-          color: newHabit.color,
+          icon: newHabit.icon || "Flame",
+          color: newHabit.color || "#f59e0b",
         },
       ]);
     }
   };
 
-  // When deleting a habit, also delete all scheduled instances linked to this habit
   const deleteHabit = async (id: string) => {
     setHabits((prev) => prev.filter((h) => h.id !== id));
     setTasks((prev) => prev.filter((t) => t.habitId !== id));
 
-    if (isSupabaseConfigured && supabase) {
+    if (user && isSupabaseConfigured && supabase) {
       await Promise.all([
-        supabase.from("habits").delete().eq("id", id),
-        supabase.from("tasks").delete().eq("habit_id", id),
+        supabase.from("habits").delete().eq("id", id).eq("user_id", user.id),
+        supabase.from("tasks").delete().eq("habit_id", id).eq("user_id", user.id),
       ]);
     }
   };
@@ -405,6 +644,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         habits,
         categories,
         isUsingSupabase: isSupabaseConfigured,
+        user,
+        session,
+        authLoading,
+        isCloudSynced,
+        signIn,
+        signUp,
+        signOut,
+        syncLocalDataToCloud,
         addTask,
         updateTask,
         deleteTask,
