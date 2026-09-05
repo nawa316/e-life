@@ -81,12 +81,18 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
       <div
         ref={setNodeRef}
         style={style}
-        onClick={() => setIsEditModalOpen(true)}
-        className={`group absolute left-14 right-2 sm:right-3 rounded-xl transition-all duration-150 border select-none overflow-hidden cursor-pointer shadow-xs ${
+        {...attributes}
+        {...listeners}
+        onClick={(e) => {
+          if (!isDragging) {
+            setIsEditModalOpen(true);
+          }
+        }}
+        className={`group absolute left-14 right-2 sm:right-3 rounded-xl transition-all duration-150 border select-none overflow-hidden cursor-grab active:cursor-grabbing touch-none shadow-xs ${
           task.completed
             ? "bg-zinc-900/40 border-zinc-800/60 text-zinc-500 opacity-60"
             : "bg-zinc-900/95 hover:bg-zinc-850/95 border-zinc-800 hover:border-zinc-700 shadow-md hover:shadow-lg"
-        }`}
+        } ${isDragging ? "ring-2 ring-blue-500 scale-[1.02] z-50 shadow-2xl" : ""}`}
       >
         {/* Accent indicator pillar */}
         <div

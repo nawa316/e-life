@@ -46,13 +46,19 @@ function TimelineHourSlot({
         top: `${topOffset}px`,
         height: `${height}px`,
       }}
-      className={`absolute left-12 right-0 transition-colors pointer-events-auto rounded-lg ${
+      className={`absolute left-0 right-0 transition-all duration-100 pointer-events-auto rounded-lg flex items-center justify-center ${
         isOver
-          ? "bg-blue-500/20 border-2 border-dashed border-blue-400 z-20"
-          : "hover:bg-zinc-850/40"
+          ? "bg-blue-500/20 border-2 border-dashed border-blue-400 z-30 shadow-lg shadow-blue-500/10"
+          : "hover:bg-zinc-800/20 z-0"
       }`}
       title={`Drop to schedule at ${timeStr}`}
-    />
+    >
+      {isOver && (
+        <span className="text-xs font-bold text-blue-300 bg-blue-950/90 px-3 py-1 rounded-full border border-blue-500/40 shadow-sm pointer-events-none animate-in fade-in zoom-in-95 duration-100">
+          Drop to schedule at {timeStr}
+        </span>
+      )}
+    </div>
   );
 }
 

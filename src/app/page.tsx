@@ -8,8 +8,12 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
+  pointerWithin,
+  closestCenter,
 } from "@dnd-kit/core";
 import { ScheduleProvider, useSchedule } from "@/lib/store";
 import { DayTimeline } from "@/components/timeline/DayTimeline";
@@ -53,6 +57,17 @@ function ScheduleApp() {
       activationConstraint: {
         distance: 5,
       },
+    }),
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
     })
   );
 
@@ -73,19 +88,38 @@ function ScheduleApp() {
     if (!taskData) return;
 
     const overData = over.data.current;
+    const overId = String(over.id);
 
     // 1. Dropped on a specific half-hour / hour slot
-    if (overData?.type === "timeline-slot" && overData.time) {
+    const isSlot = overData?.type === "timeline-slot" || overId.startsWith("slot-");
+    const slotTime = overData?.time || (overId.startsWith("slot-") ? overId.replace("slot-", "") : null);
+
+    if (isSlot && slotTime) {
       scheduleTask(
         taskData.id,
         selectedDate,
-        overData.time,
+        slotTime,
         taskData.estimatedMinutes || 30
       );
       return;
     }
 
-    // 2. Dropped on the general timeline droppable area
+    // 2. Dropped on a week day column
+    const isWeekDay = overData?.type === "week-day" || overId.startsWith("week-day-");
+    const weekDate = overData?.date || (overId.startsWith("week-day-") ? overId.replace("week-day-", "") : null);
+
+    if (isWeekDay && weekDate) {
+      const currentStart = taskData.startTime || "09:00";
+      scheduleTask(
+        taskData.id,
+        weekDate,
+        currentStart,
+        taskData.estimatedMinutes || 30
+      );
+      return;
+    }
+
+    // 3. Dropped on the general timeline droppable area
     if (over.id === "timeline-droppable" || overData?.type === "timeline-general") {
       const currentStart = taskData.startTime || "09:00";
       scheduleTask(
@@ -113,6 +147,13 @@ function ScheduleApp() {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={(args) => {
+        const pointerCollisions = pointerWithin(args);
+        if (pointerCollisions.length > 0) {
+          return pointerCollisions;
+        }
+        return closestCenter(args);
+      }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >

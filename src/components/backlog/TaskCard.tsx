@@ -51,25 +51,30 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
       <div
         ref={setNodeRef}
         style={style}
-        className={`group relative bg-zinc-900/90 hover:bg-zinc-800/90 border border-zinc-800/80 hover:border-zinc-700/80 rounded-xl p-3 sm:p-3.5 shadow-sm transition-all duration-150 ${
+        {...attributes}
+        {...listeners}
+        className={`group relative bg-zinc-900/90 hover:bg-zinc-800/90 border border-zinc-800/80 hover:border-zinc-700/80 rounded-xl p-3 sm:p-3.5 shadow-sm transition-all duration-150 cursor-grab active:cursor-grabbing touch-none select-none ${
           task.completed ? "opacity-60 bg-zinc-950/40" : ""
-        }`}
+        } ${isDragging ? "ring-2 ring-blue-500 scale-[1.02]" : ""}`}
       >
         <div className="flex items-start gap-2.5">
-          {/* Drag handle (desktop) */}
+          {/* Drag handle */}
           <div
-            {...attributes}
-            {...listeners}
-            className="mt-0.5 text-zinc-600 hover:text-zinc-300 cursor-grab active:cursor-grabbing p-0.5 rounded touch-none transition-colors hidden sm:block"
-            title="Drag to timeline"
+            className="mt-0.5 text-zinc-500 group-hover:text-blue-400 p-0.5 rounded transition-colors shrink-0"
+            title="Drag onto timeline"
           >
             <GripVertical size={16} />
           </div>
 
           {/* Checkbox button */}
           <button
-            onClick={() => toggleTaskCompletion(task.id)}
-            className="mt-0.5 text-zinc-500 hover:text-blue-400 transition-colors cursor-pointer"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTaskCompletion(task.id);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="mt-0.5 text-zinc-500 hover:text-blue-400 transition-colors cursor-pointer shrink-0"
           >
             {task.completed ? (
               <CheckCircle2 size={18} className="text-emerald-500" />
@@ -79,7 +84,15 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
           </button>
 
           {/* Task Details */}
-          <div className="flex-1 min-w-0" onClick={() => onEdit && onEdit(task)}>
+          <div
+            className="flex-1 min-w-0"
+            onClick={(e) => {
+              if (onEdit) {
+                e.stopPropagation();
+                onEdit(task);
+              }
+            }}
+          >
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h4
                 className={`text-sm font-medium text-zinc-100 truncate ${
@@ -124,11 +137,16 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
             </div>
           </div>
 
-          {/* Action icons - ALWAYS VISIBLE ON MOBILE */}
-          <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          {/* Action icons */}
+          <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
             {showScheduleAction && !task.scheduledDate && (
               <button
-                onClick={() => setIsScheduleModalOpen(true)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsScheduleModalOpen(true);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
                 className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg cursor-pointer transition-all active:scale-95 shadow-2xs"
                 title="Schedule into calendar"
               >
@@ -137,7 +155,12 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
               </button>
             )}
             <button
-              onClick={() => deleteTask(task.id)}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteTask(task.id);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
               className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-md cursor-pointer transition-colors"
               title="Delete task"
             >
