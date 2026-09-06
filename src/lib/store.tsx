@@ -83,6 +83,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           priority: t.priority,
           estimatedMinutes: t.estimated_minutes,
           completed: t.completed,
+          status: t.status || (t.completed ? "completed" : "pending"),
           completedAt: t.completed_at || undefined,
           scheduledDate: t.scheduled_date || undefined,
           startTime: t.start_time || undefined,
@@ -105,6 +106,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           frequency: h.frequency,
           streak: h.streak || 0,
           completedDates: h.completed_dates || [],
+          missedDates: h.missed_dates || [],
           icon: h.icon || "Flame",
           color: h.color || "#f59e0b",
           createdAt: h.created_at,
@@ -361,6 +363,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           priority: t.priority,
           estimated_minutes: t.estimatedMinutes,
           completed: t.completed,
+          status: t.status || (t.completed ? "completed" : "pending"),
           completed_at: t.completedAt || null,
           scheduled_date: t.scheduledDate || null,
           start_time: t.startTime || null,
@@ -383,6 +386,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           frequency: h.frequency,
           streak: h.streak || 0,
           completed_dates: h.completedDates || [],
+          missed_dates: h.missedDates || [],
           icon: h.icon || "Flame",
           color: h.color || "#f59e0b",
         }));
@@ -399,6 +403,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const addTask = async (taskData: Omit<Task, "id" | "createdAt">) => {
     const newTask: Task = {
       ...taskData,
+      status: taskData.status || (taskData.completed ? "completed" : "pending"),
       id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString(),
     };
@@ -415,6 +420,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           priority: newTask.priority,
           estimated_minutes: newTask.estimatedMinutes,
           completed: newTask.completed,
+          status: newTask.status || "pending",
           scheduled_date: newTask.scheduledDate || null,
           start_time: newTask.startTime || null,
           end_time: newTask.endTime || null,
@@ -438,6 +444,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
       if (updates.estimatedMinutes !== undefined) dbUpdates.estimated_minutes = updates.estimatedMinutes;
       if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
+      if (updates.status !== undefined) dbUpdates.status = updates.status;
       if (updates.completedAt !== undefined) dbUpdates.completed_at = updates.completedAt;
       if (updates.scheduledDate !== undefined) dbUpdates.scheduled_date = updates.scheduledDate;
       if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
@@ -469,6 +476,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
       if (updates.streak !== undefined) dbUpdates.streak = updates.streak;
       if (updates.completedDates !== undefined) dbUpdates.completed_dates = updates.completedDates;
+      if (updates.missedDates !== undefined) dbUpdates.missed_dates = updates.missedDates;
       if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
       if (updates.color !== undefined) dbUpdates.color = updates.color;
 
