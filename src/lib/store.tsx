@@ -153,19 +153,21 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       const localCachedTasks = localStorage.getItem(`elife_tasks_user_${currentUser.id}`);
       const localCachedHabits = localStorage.getItem(`elife_habits_user_${currentUser.id}`);
       
-      if (loadedTasks.length === 0 && localCachedTasks) {
-        try {
-          loadedTasks = JSON.parse(localCachedTasks);
-        } catch (e) {}
+      let parsedLocalTasks: Task[] = [];
+      let parsedLocalHabits: Habit[] = [];
+      if (localCachedTasks) {
+        try { parsedLocalTasks = JSON.parse(localCachedTasks); } catch (e) {}
       }
-      if (loadedHabits.length === 0 && localCachedHabits) {
-        try {
-          loadedHabits = JSON.parse(localCachedHabits);
-        } catch (e) {}
+      if (localCachedHabits) {
+        try { parsedLocalHabits = JSON.parse(localCachedHabits); } catch (e) {}
       }
 
-      setTasks(loadedTasks);
-      setHabits(loadedHabits);
+      // If remote returned items, use them; if remote was empty (or failed), fallback to local cache
+      const finalTasks = loadedTasks.length > 0 ? loadedTasks : parsedLocalTasks;
+      const finalHabits = loadedHabits.length > 0 ? loadedHabits : parsedLocalHabits;
+
+      setTasks(finalTasks);
+      setHabits(finalHabits);
       setCategories(loadedCats);
       setIsCloudSynced(true);
     } catch (err) {
