@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/lib/types";
 import { useSchedule } from "@/lib/store";
 import { timeToMinutes, formatMinutes, minutesToTime } from "@/lib/utils";
-import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, GripVertical } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, Pencil } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 
@@ -83,11 +83,6 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
         style={style}
         {...attributes}
         {...listeners}
-        onClick={(e) => {
-          if (!isDragging) {
-            setIsEditModalOpen(true);
-          }
-        }}
         className={`group absolute left-14 right-2 sm:right-3 rounded-xl transition-all duration-150 border select-none overflow-hidden cursor-grab active:cursor-grabbing touch-none shadow-xs ${
           task.completed
             ? "bg-zinc-900/40 border-zinc-800/60 text-zinc-500 opacity-60"
@@ -122,7 +117,13 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             </button>
 
             {/* Title & Info */}
-            <div className="min-w-0 flex-1">
+            <div
+              className="min-w-0 flex-1 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditModalOpen(true);
+              }}
+            >
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span
                   className={`text-xs font-semibold text-zinc-100 truncate ${
@@ -182,16 +183,18 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
               +15m
             </button>
 
-            {/* Drag handle (desktop) */}
-            <div
-              {...attributes}
-              {...listeners}
-              onClick={(e) => e.stopPropagation()}
-              className="hidden sm:inline-flex p-1 text-zinc-500 hover:text-zinc-200 cursor-grab active:cursor-grabbing rounded hover:bg-zinc-800"
-              title="Drag on timeline"
+            {/* Explicit Edit Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditModalOpen(true);
+              }}
+              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors"
+              title="Edit task"
             >
-              <GripVertical size={14} />
-            </div>
+              <Pencil size={13} />
+            </button>
 
             {/* Move to backlog */}
             <button

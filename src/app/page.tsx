@@ -59,11 +59,6 @@ function ScheduleApp() {
         distance: 5,
       },
     }),
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
     useSensor(TouchSensor, {
       activationConstraint: {
         delay: 150,
