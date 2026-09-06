@@ -88,26 +88,38 @@ function WeekDayColumn({
         {dayTasks.map((t) => {
           const category = categories.find((c) => c.id === t.category);
           const color = category?.color || "#3b82f6";
+          const isMissed = t.status === "missed";
           return (
             <div
               key={t.id}
               className={`p-1.5 rounded-lg border text-left transition-all ${
                 t.completed
                   ? "bg-zinc-900/40 border-zinc-850 opacity-60 line-through text-zinc-500"
+                  : isMissed
+                  ? "bg-red-950/25 border-red-500/40 text-red-200/90 shadow-2xs"
                   : "bg-zinc-900/80 border-zinc-800 text-zinc-200 shadow-2xs"
               }`}
             >
               <div className="flex items-center gap-1">
                 <span
                   className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: color }}
+                  style={{ backgroundColor: isMissed ? "#ef4444" : color }}
                 />
-                <span className="text-[11px] font-medium truncate flex-1">
+                <span className={`text-[11px] font-medium truncate flex-1 ${
+                  isMissed ? "line-through text-red-300/90" : ""
+                }`}>
                   {t.title}
                 </span>
+                {isMissed && (
+                  <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-1 py-0.2 rounded font-semibold shrink-0">
+                    Missed
+                  </span>
+                )}
               </div>
               {t.startTime && (
-                <span className="text-[9px] font-mono text-zinc-400 block mt-0.5">
+                <span className={`text-[9px] font-mono block mt-0.5 ${
+                  isMissed ? "text-red-400/70" : "text-zinc-400"
+                }`}>
                   {t.startTime} ({t.estimatedMinutes}m)
                 </span>
               )}
