@@ -82,13 +82,13 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           category: t.category,
           priority: t.priority,
           estimatedMinutes: t.estimated_minutes,
-          completed: t.completed,
-          status: t.status || (t.completed ? "completed" : "pending"),
+          completed: Boolean(t.completed),
+          status: (t.status as any) || (t.completed ? "completed" : "pending"),
           completedAt: t.completed_at || undefined,
           scheduledDate: t.scheduled_date || undefined,
           startTime: t.start_time || undefined,
           endTime: t.end_time || undefined,
-          isHabitInstance: t.is_habit_instance,
+          isHabitInstance: Boolean(t.is_habit_instance),
           habitId: t.habit_id || undefined,
           tags: t.tags || [],
           createdAt: t.created_at,
@@ -122,56 +122,19 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         }));
       }
 
-      // If user is brand new and has no data in cloud, initialize with defaults
-      if (loadedTasks.length === 0 && loadedHabits.length === 0) {
+      // If user has local cache data for this user ID, merge/fallback
+      const localCachedTasks = localStorage.getItem(`elife_tasks_user_${currentUser.id}`);
+      const localCachedHabits = localStorage.getItem(`elife_habits_user_${currentUser.id}`);
+      
+      if (loadedTasks.length === 0 && localCachedTasks) {
         try {
-          const storedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
-          const storedHabits = localStorage.getItem(HABITS_STORAGE_KEY);
-          const initialT: Task[] = storedTasks ? JSON.parse(storedTasks) : initialTasks;
-          const initialH: Habit[] = storedHabits ? JSON.parse(storedHabits) : initialHabits;
-
-          loadedTasks = initialT;
-          loadedHabits = initialH;
-
-          // Push initial data to Supabase for the user
-          await Promise.all([
-            supabase.from("tasks").insert(
-              initialT.map((t) => ({
-                id: t.id,
-                user_id: currentUser.id,
-                title: t.title,
-                description: t.description || null,
-                category: t.category,
-                priority: t.priority,
-                estimated_minutes: t.estimatedMinutes,
-                completed: t.completed,
-                scheduled_date: t.scheduledDate || null,
-                start_time: t.startTime || null,
-                end_time: t.endTime || null,
-                is_habit_instance: t.isHabitInstance || false,
-                habit_id: t.habitId || null,
-              }))
-            ),
-            supabase.from("habits").insert(
-              initialH.map((h) => ({
-                id: h.id,
-                user_id: currentUser.id,
-                title: h.title,
-                description: h.description || null,
-                category: h.category,
-                target_minutes: h.targetMinutes,
-                preferred_time: h.preferredTime || "08:00",
-                frequency: h.frequency,
-                streak: h.streak || 0,
-                completed_dates: h.completedDates || [],
-                icon: h.icon || "Flame",
-                color: h.color || "#f59e0b",
-              }))
-            ),
-          ]);
-        } catch (seedErr) {
-          console.error("Auto-seed to Supabase error:", seedErr);
-        }
+          loadedTasks = JSON.parse(localCachedTasks);
+        } catch (e) {}
+      }
+      if (loadedHabits.length === 0 && localCachedHabits) {
+        try {
+          loadedHabits = JSON.parse(localCachedHabits);
+        } catch (e) {}
       }
 
       setTasks(loadedTasks);
@@ -180,6 +143,13 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       setIsCloudSynced(true);
     } catch (err) {
       console.error("Error loading user data from Supabase:", err);
+      // Try loading from local cached user data
+      try {
+        const cachedTasks = localStorage.getItem(`elife_tasks_user_${currentUser.id}`);
+        const cachedHabits = localStorage.getItem(`elife_habits_user_${currentUser.id}`);
+        if (cachedTasks) setTasks(JSON.parse(cachedTasks));
+        if (cachedHabits) setHabits(JSON.parse(cachedHabits));
+      } catch (e) {}
     }
   }, []);
 
@@ -450,7 +420,33 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
       if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
 
-      await supabase.from("tasks").update(dbUpdates).eq("id", id).eq("user_id", user.id);
+      try {
+        const { error } = await supabase.from("tasks").update(dbUpdates).eq("id", id).eq("user_id", user.id);
+        if (error) {
+          console.warn("Direct update failed, trying upsert on tasks table:", error);
+          const currentTask = tasks.find((t) => t.id === id);
+          if (currentTask) {
+            await supabase.from("tasks").upsert({
+              id: currentTask.id,
+              user_id: user.id,
+              title: updates.title ?? currentTask.title,
+              description: updates.description ?? currentTask.description ?? null,
+              category: updates.category ?? currentTask.category,
+              priority: updates.priority ?? currentTask.priority,
+              estimated_minutes: updates.estimatedMinutes ?? currentTask.estimatedMinutes,
+              completed: updates.completed ?? currentTask.completed,
+              status: updates.status ?? currentTask.status ?? (currentTask.completed ? "completed" : "pending"),
+              scheduled_date: updates.scheduledDate ?? currentTask.scheduledDate ?? null,
+              start_time: updates.startTime ?? currentTask.startTime ?? null,
+              end_time: updates.endTime ?? currentTask.endTime ?? null,
+              is_habit_instance: currentTask.isHabitInstance || false,
+              habit_id: currentTask.habitId || null,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to update task in Supabase:", err);
+      }
     }
   };
 
@@ -480,7 +476,32 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
       if (updates.color !== undefined) dbUpdates.color = updates.color;
 
-      await supabase.from("habits").update(dbUpdates).eq("id", id).eq("user_id", user.id);
+      try {
+        const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id).eq("user_id", user.id);
+        if (error) {
+          console.warn("Direct update failed, trying upsert on habits table:", error);
+          const currentHabit = habits.find((h) => h.id === id);
+          if (currentHabit) {
+            await supabase.from("habits").upsert({
+              id: currentHabit.id,
+              user_id: user.id,
+              title: updates.title ?? currentHabit.title,
+              description: updates.description ?? currentHabit.description ?? null,
+              category: updates.category ?? currentHabit.category,
+              target_minutes: updates.targetMinutes ?? currentHabit.targetMinutes,
+              preferred_time: updates.preferredTime ?? currentHabit.preferredTime ?? "08:00",
+              frequency: updates.frequency ?? currentHabit.frequency,
+              streak: updates.streak ?? currentHabit.streak ?? 0,
+              completed_dates: updates.completedDates ?? currentHabit.completedDates ?? [],
+              missed_dates: updates.missedDates ?? currentHabit.missedDates ?? [],
+              icon: updates.icon ?? currentHabit.icon ?? "Flame",
+              color: updates.color ?? currentHabit.color ?? "#f59e0b",
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to update habit in Supabase:", err);
+      }
     }
   };
 
