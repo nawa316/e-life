@@ -31,10 +31,14 @@ export function BacklogDrawer() {
   const [priority, setPriority] = useState<Priority>("medium");
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
 
+  const [activeTab, setActiveTab] = useState<"active" | "missed">("active");
+
   // Filter unscheduled backlog tasks
   const backlogTasks = tasks.filter((task) => !task.scheduledDate);
+  const missedTasks = tasks.filter((task) => task.status === "missed");
+  const targetTaskList = activeTab === "active" ? backlogTasks.filter((t) => t.status !== "missed") : missedTasks;
 
-  const filteredTasks = backlogTasks.filter((task) => {
+  const filteredTasks = targetTaskList.filter((task) => {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -54,6 +58,7 @@ export function BacklogDrawer() {
       priority,
       estimatedMinutes: Number(estimatedMinutes) || 30,
       completed: false,
+      status: "pending",
     });
 
     setTitle("");
@@ -75,9 +80,6 @@ export function BacklogDrawer() {
         <div className="flex items-center gap-2">
           <Inbox className="text-blue-500" size={20} />
           <h3 className="font-semibold text-zinc-100 text-base">Activity Backlog</h3>
-          <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full font-medium">
-            {backlogTasks.length}
-          </span>
         </div>
         <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
           <Plus size={15} />
@@ -85,13 +87,46 @@ export function BacklogDrawer() {
         </Button>
       </div>
 
+      {/* Tabs: Active Backlog vs Missed Tasks */}
+      <div className="flex items-center gap-1.5 pt-2.5 pb-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("active")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === "active"
+              ? "bg-zinc-800 text-zinc-100 shadow-xs border border-zinc-700"
+              : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+          }`}
+        >
+          <span>Backlog</span>
+          <span className="text-[10px] bg-zinc-700 text-zinc-300 px-1.5 py-0.2 rounded-full font-mono">
+            {backlogTasks.filter((t) => t.status !== "missed").length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("missed")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === "missed"
+              ? "bg-red-500/20 text-red-300 shadow-xs border border-red-500/40"
+              : "text-zinc-400 hover:text-red-400 hover:bg-zinc-900"
+          }`}
+        >
+          <span>Missed Tasks</span>
+          <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded-full font-mono">
+            {missedTasks.length}
+          </span>
+        </button>
+      </div>
+
       {/* Search & Filters */}
-      <div className="py-3 space-y-2 border-b border-zinc-800/60">
+      <div className="py-2.5 space-y-2 border-b border-zinc-800/60">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 text-zinc-500" size={15} />
           <input
             type="text"
-            placeholder="Search backlog..."
+            placeholder={activeTab === "active" ? "Search backlog..." : "Search missed tasks..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-colors"
@@ -138,9 +173,13 @@ export function BacklogDrawer() {
         {filteredTasks.length === 0 ? (
           <div className="h-48 flex flex-col items-center justify-center text-center p-4 border border-dashed border-zinc-800 rounded-xl text-zinc-500">
             <Inbox size={32} className="mb-2 text-zinc-600" />
-            <p className="text-sm font-medium text-zinc-400">No tasks found</p>
+            <p className="text-sm font-medium text-zinc-400">
+              {activeTab === "active" ? "No tasks found in backlog" : "No missed tasks recorded"}
+            </p>
             <p className="text-xs text-zinc-600 mt-1 max-w-[200px]">
-              Add your upcoming thoughts, tasks or backlog items to drag into your schedule.
+              {activeTab === "active"
+                ? "Add upcoming tasks or drag scheduled items here to hold them."
+                : "Tasks marked as missed will appear here for easy restore or deletion."}
             </p>
           </div>
         ) : (
