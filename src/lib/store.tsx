@@ -75,42 +75,69 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       let loadedCats: Category[] = initialCategories;
 
       if (tasksRes.data && tasksRes.data.length > 0) {
-        loadedTasks = tasksRes.data.map((t) => ({
-          id: t.id,
-          title: t.title,
-          description: t.description || undefined,
-          category: t.category,
-          priority: t.priority,
-          estimatedMinutes: t.estimated_minutes,
-          completed: Boolean(t.completed),
-          status: (t.status as any) || (t.completed ? "completed" : "pending"),
-          completedAt: t.completed_at || undefined,
-          scheduledDate: t.scheduled_date || undefined,
-          startTime: t.start_time || undefined,
-          endTime: t.end_time || undefined,
-          isHabitInstance: Boolean(t.is_habit_instance),
-          habitId: t.habit_id || undefined,
-          tags: t.tags || [],
-          createdAt: t.created_at,
-        }));
+        loadedTasks = tasksRes.data.map((t) => {
+          // Resolve status: direct status column, tag flag, or completed boolean
+          let resolvedStatus: "pending" | "completed" | "missed" = "pending";
+          if (t.status) {
+            resolvedStatus = t.status as any;
+          } else if (t.tags && Array.isArray(t.tags) && (t.tags.includes("status:missed") || t.tags.includes("missed"))) {
+            resolvedStatus = "missed";
+          } else if (t.completed) {
+            resolvedStatus = "completed";
+          }
+
+          return {
+            id: t.id,
+            title: t.title,
+            description: t.description || undefined,
+            category: t.category,
+            priority: t.priority,
+            estimatedMinutes: t.estimated_minutes,
+            completed: Boolean(t.completed),
+            status: resolvedStatus,
+            completedAt: t.completed_at || undefined,
+            scheduledDate: t.scheduled_date || undefined,
+            startTime: t.start_time || undefined,
+            endTime: t.end_time || undefined,
+            isHabitInstance: Boolean(t.is_habit_instance),
+            habitId: t.habit_id || undefined,
+            tags: t.tags || [],
+            createdAt: t.created_at,
+          };
+        });
       }
 
       if (habitsRes.data && habitsRes.data.length > 0) {
-        loadedHabits = habitsRes.data.map((h) => ({
-          id: h.id,
-          title: h.title,
-          description: h.description || undefined,
-          category: h.category,
-          targetMinutes: h.target_minutes,
-          preferredTime: h.preferred_time || undefined,
-          frequency: h.frequency,
-          streak: h.streak || 0,
-          completedDates: h.completed_dates || [],
-          missedDates: h.missed_dates || [],
-          icon: h.icon || "Flame",
-          color: h.color || "#f59e0b",
-          createdAt: h.created_at,
-        }));
+        loadedHabits = habitsRes.data.map((h) => {
+          let resolvedMissedDates: string[] = h.missed_dates || [];
+          // Fallback if missed_dates column didn't exist in Supabase yet but was encoded in description JSON
+          if ((!resolvedMissedDates || resolvedMissedDates.length === 0) && h.description && h.description.includes("__MISSED_DATES__:")) {
+            try {
+              const match = h.description.match(/__MISSED_DATES__:(\[[^\]]*\])/);
+              if (match && match[1]) {
+                resolvedMissedDates = JSON.parse(match[1]);
+              }
+            } catch (e) {}
+          }
+
+          const cleanDescription = h.description ? h.description.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "").trim() || undefined : undefined;
+
+          return {
+            id: h.id,
+            title: h.title,
+            description: cleanDescription,
+            category: h.category,
+            targetMinutes: h.target_minutes,
+            preferredTime: h.preferred_time || undefined,
+            frequency: h.frequency,
+            streak: h.streak || 0,
+            completedDates: h.completed_dates || [],
+            missedDates: resolvedMissedDates,
+            icon: h.icon || "Flame",
+            color: h.color || "#f59e0b",
+            createdAt: h.created_at,
+          };
+        });
       }
 
       if (catsRes.data && catsRes.data.length > 0) {
@@ -324,43 +351,77 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (tasks.length > 0) {
-        const taskPayload = tasks.map((t) => ({
-          id: t.id,
-          user_id: user.id,
-          title: t.title,
-          description: t.description || null,
-          category: t.category,
-          priority: t.priority,
-          estimated_minutes: t.estimatedMinutes,
-          completed: t.completed,
-          status: t.status || (t.completed ? "completed" : "pending"),
-          completed_at: t.completedAt || null,
-          scheduled_date: t.scheduledDate || null,
-          start_time: t.startTime || null,
-          end_time: t.endTime || null,
-          is_habit_instance: t.isHabitInstance || false,
-          habit_id: t.habitId || null,
-        }));
-        await supabase.from("tasks").upsert(taskPayload, { onConflict: "id" });
+        const taskPayload = tasks.map((t) => {
+          const effectiveStatus = t.status || (t.completed ? "completed" : "pending");
+          let effectiveTags = t.tags ? [...t.tags] : [];
+          if (effectiveStatus === "missed" && !effectiveTags.includes("status:missed")) {
+            effectiveTags.push("status:missed");
+          } else if (effectiveStatus !== "missed") {
+            effectiveTags = effectiveTags.filter((tag) => tag !== "status:missed" && tag !== "missed");
+          }
+
+          return {
+            id: t.id,
+            user_id: user.id,
+            title: t.title,
+            description: t.description || null,
+            category: t.category,
+            priority: t.priority,
+            estimated_minutes: t.estimatedMinutes,
+            completed: t.completed,
+            status: effectiveStatus,
+            completed_at: t.completedAt || null,
+            scheduled_date: t.scheduledDate || null,
+            start_time: t.startTime || null,
+            end_time: t.endTime || null,
+            is_habit_instance: t.isHabitInstance || false,
+            habit_id: t.habitId || null,
+            tags: effectiveTags,
+          };
+        });
+
+        // Try upserting full payload
+        const { error } = await supabase.from("tasks").upsert(taskPayload, { onConflict: "id" });
+        if (error) {
+          console.warn("Task sync error, attempting fallback without custom status column:", error);
+          // If status column doesn't exist on remote DB yet, upsert without status column (tags still preserve missed status)
+          const fallbackPayload = taskPayload.map(({ status, ...rest }) => rest);
+          await supabase.from("tasks").upsert(fallbackPayload, { onConflict: "id" });
+        }
       }
 
       if (habits.length > 0) {
-        const habitPayload = habits.map((h) => ({
-          id: h.id,
-          user_id: user.id,
-          title: h.title,
-          description: h.description || null,
-          category: h.category,
-          target_minutes: h.targetMinutes,
-          preferred_time: h.preferredTime || "08:00",
-          frequency: h.frequency,
-          streak: h.streak || 0,
-          completed_dates: h.completedDates || [],
-          missed_dates: h.missedDates || [],
-          icon: h.icon || "Flame",
-          color: h.color || "#f59e0b",
-        }));
-        await supabase.from("habits").upsert(habitPayload, { onConflict: "id" });
+        const habitPayload = habits.map((h) => {
+          let descriptionWithFallback = h.description || "";
+          if (h.missedDates && h.missedDates.length > 0) {
+            descriptionWithFallback = `${descriptionWithFallback.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "")}\n__MISSED_DATES__:${JSON.stringify(h.missedDates)}`.trim();
+          } else {
+            descriptionWithFallback = descriptionWithFallback.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "").trim();
+          }
+
+          return {
+            id: h.id,
+            user_id: user.id,
+            title: h.title,
+            description: descriptionWithFallback || null,
+            category: h.category,
+            target_minutes: h.targetMinutes,
+            preferred_time: h.preferredTime || "08:00",
+            frequency: h.frequency,
+            streak: h.streak || 0,
+            completed_dates: h.completedDates || [],
+            missed_dates: h.missedDates || [],
+            icon: h.icon || "Flame",
+            color: h.color || "#f59e0b",
+          };
+        });
+
+        const { error } = await supabase.from("habits").upsert(habitPayload, { onConflict: "id" });
+        if (error) {
+          console.warn("Habit sync error, attempting fallback without missed_dates column:", error);
+          const fallbackHabitPayload = habitPayload.map(({ missed_dates, ...rest }) => rest);
+          await supabase.from("habits").upsert(fallbackHabitPayload, { onConflict: "id" });
+        }
       }
 
       setIsCloudSynced(true);
@@ -371,43 +432,84 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
   // Task & Habit Actions
   const addTask = async (taskData: Omit<Task, "id" | "createdAt">) => {
+    const effectiveStatus = taskData.status || (taskData.completed ? "completed" : "pending");
+    let effectiveTags = taskData.tags ? [...taskData.tags] : [];
+    if (effectiveStatus === "missed" && !effectiveTags.includes("status:missed")) {
+      effectiveTags.push("status:missed");
+    }
+
     const newTask: Task = {
       ...taskData,
-      status: taskData.status || (taskData.completed ? "completed" : "pending"),
+      status: effectiveStatus,
+      tags: effectiveTags,
       id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       createdAt: new Date().toISOString(),
     };
     setTasks((prev) => [newTask, ...prev]);
 
     if (user && isSupabaseConfigured && supabase) {
-      await supabase.from("tasks").insert([
-        {
-          id: newTask.id,
-          user_id: user.id,
-          title: newTask.title,
-          description: newTask.description || null,
-          category: newTask.category,
-          priority: newTask.priority,
-          estimated_minutes: newTask.estimatedMinutes,
-          completed: newTask.completed,
-          status: newTask.status || "pending",
-          scheduled_date: newTask.scheduledDate || null,
-          start_time: newTask.startTime || null,
-          end_time: newTask.endTime || null,
-          is_habit_instance: newTask.isHabitInstance || false,
-          habit_id: newTask.habitId || null,
-        },
-      ]);
+      const payload: any = {
+        id: newTask.id,
+        user_id: user.id,
+        title: newTask.title,
+        description: newTask.description || null,
+        category: newTask.category,
+        priority: newTask.priority,
+        estimated_minutes: newTask.estimatedMinutes,
+        completed: newTask.completed,
+        status: newTask.status || "pending",
+        scheduled_date: newTask.scheduledDate || null,
+        start_time: newTask.startTime || null,
+        end_time: newTask.endTime || null,
+        is_habit_instance: newTask.isHabitInstance || false,
+        habit_id: newTask.habitId || null,
+        tags: newTask.tags || [],
+      };
+
+      const { error } = await supabase.from("tasks").insert([payload]);
+      if (error) {
+        console.warn("Error inserting task, trying fallback without status column:", error);
+        delete payload.status;
+        await supabase.from("tasks").insert([payload]);
+      }
     }
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
+    let resolvedUpdatedTask: Task | undefined;
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      prev.map((t) => {
+        if (t.id === id) {
+          const merged = { ...t, ...updates };
+          const stat = merged.status || (merged.completed ? "completed" : "pending");
+          let tgs = merged.tags ? [...merged.tags] : [];
+          if (stat === "missed" && !tgs.includes("status:missed")) {
+            tgs.push("status:missed");
+          } else if (stat !== "missed") {
+            tgs = tgs.filter((tag) => tag !== "status:missed" && tag !== "missed");
+          }
+          merged.tags = tgs;
+          resolvedUpdatedTask = merged;
+          return merged;
+        }
+        return t;
+      })
     );
 
     if (user && isSupabaseConfigured && supabase) {
-      const dbUpdates: any = { updated_at: new Date().toISOString() };
+      const currentTask = resolvedUpdatedTask || tasks.find((t) => t.id === id);
+      const effectiveStatus = updates.status ?? currentTask?.status ?? (updates.completed ? "completed" : "pending");
+      let effectiveTags = updates.tags ?? currentTask?.tags ?? [];
+      if (effectiveStatus === "missed" && !effectiveTags.includes("status:missed")) {
+        effectiveTags = [...effectiveTags, "status:missed"];
+      } else if (effectiveStatus !== "missed") {
+        effectiveTags = effectiveTags.filter((tag) => tag !== "status:missed" && tag !== "missed");
+      }
+
+      const dbUpdates: any = { 
+        updated_at: new Date().toISOString(),
+        tags: effectiveTags,
+      };
       if (updates.title !== undefined) dbUpdates.title = updates.title;
       if (updates.description !== undefined) dbUpdates.description = updates.description;
       if (updates.category !== undefined) dbUpdates.category = updates.category;
@@ -423,9 +525,11 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       try {
         const { error } = await supabase.from("tasks").update(dbUpdates).eq("id", id).eq("user_id", user.id);
         if (error) {
-          console.warn("Direct update failed, trying upsert on tasks table:", error);
-          const currentTask = tasks.find((t) => t.id === id);
-          if (currentTask) {
+          console.warn("Direct update failed, trying without status column or upsert:", error);
+          const fallbackUpdates = { ...dbUpdates };
+          delete fallbackUpdates.status;
+          const { error: err2 } = await supabase.from("tasks").update(fallbackUpdates).eq("id", id).eq("user_id", user.id);
+          if (err2 && currentTask) {
             await supabase.from("tasks").upsert({
               id: currentTask.id,
               user_id: user.id,
@@ -435,12 +539,12 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
               priority: updates.priority ?? currentTask.priority,
               estimated_minutes: updates.estimatedMinutes ?? currentTask.estimatedMinutes,
               completed: updates.completed ?? currentTask.completed,
-              status: updates.status ?? currentTask.status ?? (currentTask.completed ? "completed" : "pending"),
               scheduled_date: updates.scheduledDate ?? currentTask.scheduledDate ?? null,
               start_time: updates.startTime ?? currentTask.startTime ?? null,
               end_time: updates.endTime ?? currentTask.endTime ?? null,
               is_habit_instance: currentTask.isHabitInstance || false,
               habit_id: currentTask.habitId || null,
+              tags: effectiveTags,
             });
           }
         }
@@ -458,14 +562,33 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateHabit = async (id: string, updates: Partial<Habit>) => {
+    let resolvedUpdatedHabit: Habit | undefined;
     setHabits((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, ...updates } : h))
+      prev.map((h) => {
+        if (h.id === id) {
+          const merged = { ...h, ...updates };
+          resolvedUpdatedHabit = merged;
+          return merged;
+        }
+        return h;
+      })
     );
 
     if (user && isSupabaseConfigured && supabase) {
-      const dbUpdates: any = { updated_at: new Date().toISOString() };
+      const currentHabit = resolvedUpdatedHabit || habits.find((h) => h.id === id);
+      const missedDates = updates.missedDates ?? currentHabit?.missedDates ?? [];
+      let descriptionWithFallback = updates.description ?? currentHabit?.description ?? "";
+      if (missedDates && missedDates.length > 0) {
+        descriptionWithFallback = `${descriptionWithFallback.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "")}\n__MISSED_DATES__:${JSON.stringify(missedDates)}`.trim();
+      } else {
+        descriptionWithFallback = descriptionWithFallback.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "").trim();
+      }
+
+      const dbUpdates: any = { 
+        updated_at: new Date().toISOString(),
+        description: descriptionWithFallback || null,
+      };
       if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
       if (updates.category !== undefined) dbUpdates.category = updates.category;
       if (updates.targetMinutes !== undefined) dbUpdates.target_minutes = updates.targetMinutes;
       if (updates.preferredTime !== undefined) dbUpdates.preferred_time = updates.preferredTime;
@@ -479,21 +602,22 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       try {
         const { error } = await supabase.from("habits").update(dbUpdates).eq("id", id).eq("user_id", user.id);
         if (error) {
-          console.warn("Direct update failed, trying upsert on habits table:", error);
-          const currentHabit = habits.find((h) => h.id === id);
-          if (currentHabit) {
+          console.warn("Direct update failed, trying fallback without missed_dates column:", error);
+          const fallbackUpdates = { ...dbUpdates };
+          delete fallbackUpdates.missed_dates;
+          const { error: err2 } = await supabase.from("habits").update(fallbackUpdates).eq("id", id).eq("user_id", user.id);
+          if (err2 && currentHabit) {
             await supabase.from("habits").upsert({
               id: currentHabit.id,
               user_id: user.id,
               title: updates.title ?? currentHabit.title,
-              description: updates.description ?? currentHabit.description ?? null,
+              description: descriptionWithFallback || null,
               category: updates.category ?? currentHabit.category,
               target_minutes: updates.targetMinutes ?? currentHabit.targetMinutes,
               preferred_time: updates.preferredTime ?? currentHabit.preferredTime ?? "08:00",
               frequency: updates.frequency ?? currentHabit.frequency,
               streak: updates.streak ?? currentHabit.streak ?? 0,
               completed_dates: updates.completedDates ?? currentHabit.completedDates ?? [],
-              missed_dates: updates.missedDates ?? currentHabit.missedDates ?? [],
               icon: updates.icon ?? currentHabit.icon ?? "Flame",
               color: updates.color ?? currentHabit.color ?? "#f59e0b",
             });
