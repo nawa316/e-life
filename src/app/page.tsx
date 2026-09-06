@@ -42,7 +42,7 @@ import {
 import { Button } from "@/components/ui/Button";
 
 function ScheduleApp() {
-  const { selectedDate, setSelectedDate, scheduleTask, habits } = useSchedule();
+  const { selectedDate, setSelectedDate, scheduleTask, unscheduleTask, habits } = useSchedule();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [activeView, setActiveView] = useState<"planner" | "stats">("planner");
   const [mobileTab, setMobileTab] = useState<"planner" | "backlog" | "habits" | "focus" | "stats">("planner");
@@ -91,7 +91,14 @@ function ScheduleApp() {
     const overData = over.data.current;
     const overId = String(over.id);
 
-    // 1. Dropped on a specific half-hour / hour slot
+    // 1. Dropped on the backlog (unschedule task)
+    const isBacklog = overData?.type === "backlog" || overId === "backlog-droppable";
+    if (isBacklog) {
+      unscheduleTask(taskData.id);
+      return;
+    }
+
+    // 2. Dropped on a specific half-hour / hour slot
     const isSlot = overData?.type === "timeline-slot" || overId.startsWith("slot-");
     const slotTime = overData?.time || (overId.startsWith("slot-") ? overId.replace("slot-", "") : null);
 
@@ -105,7 +112,7 @@ function ScheduleApp() {
       return;
     }
 
-    // 2. Dropped on a week day column
+    // 3. Dropped on a week day column
     const isWeekDay = overData?.type === "week-day" || overId.startsWith("week-day-");
     const weekDate = overData?.date || (overId.startsWith("week-day-") ? overId.replace("week-day-", "") : null);
 
@@ -120,7 +127,7 @@ function ScheduleApp() {
       return;
     }
 
-    // 3. Dropped on the general timeline droppable area
+    // 4. Dropped on the general timeline droppable area
     if (over.id === "timeline-droppable" || overData?.type === "timeline-general") {
       const currentStart = taskData.startTime || "09:00";
       scheduleTask(
@@ -149,11 +156,34 @@ function ScheduleApp() {
     <DndContext
       sensors={sensors}
       collisionDetection={(args) => {
+        // 1. First check pointer collisions directly
         const pointerCollisions = pointerWithin(args);
         if (pointerCollisions.length > 0) {
+          // If we have specific slots/days among pointer collisions, prioritize them over container droppables
+          const specificCollision = pointerCollisions.find((c) => {
+            const id = String(c.id);
+            return id.startsWith("slot-") || id.startsWith("week-day-");
+          });
+          if (specificCollision) {
+            return [specificCollision];
+          }
           return pointerCollisions;
         }
-        return closestCenter(args);
+
+        // 2. Fall back to closestCenter for forgiving drag targeting
+        const centerCollisions = closestCenter(args);
+        if (centerCollisions.length > 0) {
+          const specificCollision = centerCollisions.find((c) => {
+            const id = String(c.id);
+            return id.startsWith("slot-") || id.startsWith("week-day-");
+          });
+          if (specificCollision) {
+            return [specificCollision];
+          }
+          return centerCollisions;
+        }
+
+        return [];
       }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}

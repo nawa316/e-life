@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import { useSchedule } from "@/lib/store";
 import { TaskCard } from "./TaskCard";
 import { Button } from "../ui/Button";
@@ -14,6 +15,14 @@ export function BacklogDrawer() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Droppable zone to allow dragging scheduled tasks back into the backlog
+  const { isOver, setNodeRef } = useDroppable({
+    id: "backlog-droppable",
+    data: {
+      type: "backlog",
+    },
+  });
 
   // New task form state
   const [title, setTitle] = useState("");
@@ -53,7 +62,14 @@ export function BacklogDrawer() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950/60 border border-zinc-800/80 rounded-2xl p-4 overflow-hidden backdrop-blur-md">
+    <div
+      ref={setNodeRef}
+      className={`flex flex-col h-full bg-zinc-950/60 border rounded-2xl p-4 overflow-hidden backdrop-blur-md transition-colors ${
+        isOver
+          ? "border-blue-500/80 bg-blue-950/20 ring-2 ring-blue-500/40"
+          : "border-zinc-800/80"
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
         <div className="flex items-center gap-2">
@@ -109,6 +125,13 @@ export function BacklogDrawer() {
           </select>
         </div>
       </div>
+
+      {/* Drop feedback indicator */}
+      {isOver && (
+        <div className="mt-2 bg-blue-500/20 border border-blue-400/50 text-blue-300 text-xs font-semibold py-2 px-3 rounded-xl text-center shadow-xs animate-in fade-in zoom-in-95 duration-150">
+          Drop here to unschedule and return to backlog
+        </div>
+      )}
 
       {/* Backlog List */}
       <div className="flex-1 overflow-y-auto space-y-2.5 pt-3 pr-1">
