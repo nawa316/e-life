@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Habit, HabitFrequency } from "@/lib/types";
 import { useSchedule } from "@/lib/store";
 import { formatMinutes } from "@/lib/utils";
-import { Flame, Check, Trash2, Clock, CalendarPlus, Pencil } from "lucide-react";
+import { Flame, Check, Trash2, Clock, CalendarPlus, Pencil, X } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 
@@ -24,7 +24,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export function HabitCard({ habit }: HabitCardProps) {
-  const { selectedDate, toggleHabitCompletion, addTask, updateHabit, deleteHabit, categories } = useSchedule();
+  const { selectedDate, toggleHabitCompletion, toggleHabitMissed, addTask, updateHabit, deleteHabit, categories } = useSchedule();
   
   // Schedule Modal state
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -46,6 +46,7 @@ export function HabitCard({ habit }: HabitCardProps) {
   const [editStreak, setEditStreak] = useState(habit.streak || 0);
 
   const isCompletedToday = habit.completedDates.includes(selectedDate);
+  const isMissedToday = habit.missedDates?.includes(selectedDate) || false;
   const category = categories.find((c) => c.id === habit.category);
 
   // Sync state when opening edit modal
@@ -114,6 +115,7 @@ export function HabitCard({ habit }: HabitCardProps) {
       priority: "medium",
       estimatedMinutes: Number(duration) || 15,
       completed: habit.completedDates.includes(scheduleDate),
+      status: habit.missedDates?.includes(scheduleDate) ? "missed" : habit.completedDates.includes(scheduleDate) ? "completed" : "pending",
       scheduledDate: scheduleDate,
       startTime: scheduleTime,
       isHabitInstance: true,
@@ -125,27 +127,52 @@ export function HabitCard({ habit }: HabitCardProps) {
   return (
     <>
       <div
-        className={`group relative bg-zinc-900/90 hover:bg-zinc-850 border border-zinc-800/80 hover:border-zinc-700 rounded-xl p-3 sm:p-3.5 transition-all duration-150 ${
-          isCompletedToday ? "border-emerald-500/30 bg-emerald-950/10" : ""
+        className={`group relative bg-zinc-900/90 hover:bg-zinc-850 border rounded-xl p-3 sm:p-3.5 transition-all duration-150 ${
+          isCompletedToday
+            ? "border-emerald-500/30 bg-emerald-950/15"
+            : isMissedToday
+            ? "border-red-500/30 bg-red-950/15 opacity-80"
+            : "border-zinc-800/80 hover:border-zinc-700"
         }`}
       >
         <div className="flex items-start justify-between gap-2.5 sm:gap-3">
           <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
-            {/* Check Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleHabitCompletion(habit.id, selectedDate);
-              }}
-              className={`mt-0.5 w-7 h-7 rounded-xl flex items-center justify-center border transition-all cursor-pointer shrink-0 ${
-                isCompletedToday
-                  ? "bg-emerald-500 text-white border-emerald-400 shadow-sm shadow-emerald-500/30"
-                  : "border-zinc-700 hover:border-amber-400 text-transparent hover:text-zinc-400 bg-zinc-800/50"
-              }`}
-            >
-              <Check size={16} className={isCompletedToday ? "stroke-[2.5]" : ""} />
-            </button>
+            {/* Status Button Actions: Done & Missed */}
+            <div className="flex items-center gap-1 mt-0.5 shrink-0">
+              {/* Done Check Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleHabitCompletion(habit.id, selectedDate);
+                }}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all cursor-pointer ${
+                  isCompletedToday
+                    ? "bg-emerald-500 text-white border-emerald-400 shadow-sm shadow-emerald-500/30"
+                    : "border-zinc-700 hover:border-emerald-500/80 text-zinc-600 hover:text-emerald-400 bg-zinc-800/50 hover:bg-emerald-500/10"
+                }`}
+                title={isCompletedToday ? "Mark as uncompleted" : "Mark habit as completed (Done)"}
+              >
+                <Check size={15} className={isCompletedToday ? "stroke-[2.5]" : ""} />
+              </button>
+
+              {/* Miss / Not Successful Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleHabitMissed(habit.id, selectedDate);
+                }}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all cursor-pointer ${
+                  isMissedToday
+                    ? "bg-red-500 text-white border-red-400 shadow-sm shadow-red-500/30"
+                    : "border-zinc-700 hover:border-red-500/80 text-zinc-600 hover:text-red-400 bg-zinc-800/50 hover:bg-red-500/10"
+                }`}
+                title={isMissedToday ? "Undo missed status" : "Mark habit as missed / unsuccessful"}
+              >
+                <X size={15} className={isMissedToday ? "stroke-[2.5]" : ""} />
+              </button>
+            </div>
 
             {/* Habit Details (Click to Edit) */}
             <div
@@ -154,9 +181,21 @@ export function HabitCard({ habit }: HabitCardProps) {
               title="Click to edit habit"
             >
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <h4 className={`text-sm font-semibold text-zinc-100 truncate ${isCompletedToday ? "text-zinc-300" : ""}`}>
+                <h4 className={`text-sm font-semibold truncate ${
+                  isCompletedToday
+                    ? "text-zinc-300"
+                    : isMissedToday
+                    ? "text-red-300/90 line-through"
+                    : "text-zinc-100"
+                }`}>
                   {habit.title}
                 </h4>
+
+                {isMissedToday && (
+                  <span className="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded font-medium">
+                    Missed
+                  </span>
+                )}
               </div>
 
               {habit.description && (

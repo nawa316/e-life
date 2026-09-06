@@ -33,11 +33,9 @@ export function HabitHeatmap({ habits, daysToShow = 21 }: HabitHeatmapProps) {
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-xs font-semibold text-zinc-200">Habit Completion Consistency (3-Week Heatmap)</h4>
         <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
-          <span>Less</span>
-          <span className="w-2.5 h-2.5 rounded-xs bg-zinc-800" />
-          <span className="w-2.5 h-2.5 rounded-xs bg-emerald-700/60" />
-          <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500" />
-          <span>More</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-xs bg-emerald-500" /> Done</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-xs bg-red-500/80" /> Missed</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-xs bg-zinc-800" /> None</span>
         </div>
       </div>
 
@@ -51,13 +49,16 @@ export function HabitHeatmap({ habits, daysToShow = 21 }: HabitHeatmapProps) {
             <div className="flex items-center gap-1 flex-1 overflow-x-auto pb-0.5">
               {dates.map((d) => {
                 const isCompleted = habit.completedDates.includes(d.dateStr);
+                const isMissed = habit.missedDates?.includes(d.dateStr);
                 return (
                   <div
                     key={d.dateStr}
-                    title={`${habit.title} on ${d.dateStr}: ${isCompleted ? "Completed" : "Missed"}`}
+                    title={`${habit.title} on ${d.dateStr}: ${isCompleted ? "Completed" : isMissed ? "Missed" : "No Activity"}`}
                     className={`w-3.5 h-3.5 rounded-xs shrink-0 transition-colors ${
                       isCompleted
                         ? "bg-emerald-500 shadow-xs shadow-emerald-500/30"
+                        : isMissed
+                        ? "bg-red-500/80 shadow-xs shadow-red-500/30"
                         : "bg-zinc-800/80 hover:bg-zinc-700/80"
                     }`}
                   />

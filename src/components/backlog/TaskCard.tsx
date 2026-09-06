@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/lib/types";
 import { Badge } from "../ui/Badge";
 import { formatMinutes } from "@/lib/utils";
-import { GripVertical, Clock, CheckCircle2, Circle, Trash2, CalendarPlus, ChevronRight } from "lucide-react";
+import { GripVertical, Clock, CheckCircle2, Circle, Trash2, CalendarPlus, ChevronRight, X } from "lucide-react";
 import { useSchedule } from "@/lib/store";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -18,7 +18,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardProps) {
-  const { toggleTaskCompletion, deleteTask, scheduleTask, selectedDate, categories } = useSchedule();
+  const { toggleTaskCompletion, toggleTaskMissed, deleteTask, scheduleTask, selectedDate, categories } = useSchedule();
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(selectedDate);
   const [scheduleTime, setScheduleTime] = useState("09:00");
@@ -33,6 +33,7 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
   });
 
   const category = categories.find((c) => c.id === task.category);
+  const isMissed = task.status === "missed";
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -53,8 +54,12 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
         style={style}
         {...attributes}
         {...listeners}
-        className={`group relative bg-zinc-900/90 hover:bg-zinc-800/90 border border-zinc-800/80 hover:border-zinc-700/80 rounded-xl p-3 sm:p-3.5 shadow-sm transition-all duration-150 cursor-grab active:cursor-grabbing touch-none select-none ${
-          task.completed ? "opacity-60 bg-zinc-950/40" : ""
+        className={`group relative bg-zinc-900/90 hover:bg-zinc-800/90 border rounded-xl p-3 sm:p-3.5 shadow-sm transition-all duration-150 cursor-grab active:cursor-grabbing touch-none select-none ${
+          task.completed
+            ? "opacity-60 bg-zinc-950/40 border-zinc-800/80"
+            : isMissed
+            ? "bg-red-950/20 border-red-500/30 opacity-80"
+            : "border-zinc-800/80 hover:border-zinc-700/80"
         } ${isDragging ? "ring-2 ring-blue-500 scale-[1.02]" : ""}`}
       >
         <div className="flex items-start gap-2.5">
@@ -66,22 +71,44 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
             <GripVertical size={16} />
           </div>
 
-          {/* Checkbox button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleTaskCompletion(task.id);
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="mt-0.5 text-zinc-500 hover:text-blue-400 transition-colors cursor-pointer shrink-0"
-          >
-            {task.completed ? (
-              <CheckCircle2 size={18} className="text-emerald-500" />
-            ) : (
-              <Circle size={18} />
-            )}
-          </button>
+          {/* Status Buttons: Complete & Missed */}
+          <div className="flex items-center gap-0.5 mt-0.5 shrink-0">
+            {/* Checkbox button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTaskCompletion(task.id);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="text-zinc-500 hover:text-emerald-400 transition-colors cursor-pointer p-0.5 shrink-0"
+              title={task.completed ? "Mark uncompleted" : "Mark as completed (Done)"}
+            >
+              {task.completed ? (
+                <CheckCircle2 size={17} className="text-emerald-500" />
+              ) : (
+                <Circle size={17} />
+              )}
+            </button>
+
+            {/* Miss button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTaskMissed(task.id);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={`p-0.5 transition-colors cursor-pointer shrink-0 rounded ${
+                isMissed
+                  ? "text-red-400 hover:text-red-300"
+                  : "text-zinc-600 hover:text-red-400"
+              }`}
+              title={isMissed ? "Undo missed status" : "Mark task as missed / unsuccessful"}
+            >
+              <X size={16} className={isMissed ? "stroke-[2.5] text-red-500" : ""} />
+            </button>
+          </div>
 
           {/* Task Details */}
           <div
@@ -95,12 +122,22 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
           >
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h4
-                className={`text-sm font-medium text-zinc-100 truncate ${
-                  task.completed ? "line-through text-zinc-500" : ""
+                className={`text-sm font-medium truncate ${
+                  task.completed
+                    ? "line-through text-zinc-500"
+                    : isMissed
+                    ? "text-red-300 line-through"
+                    : "text-zinc-100"
                 }`}
               >
                 {task.title}
               </h4>
+
+              {isMissed && (
+                <span className="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded font-medium">
+                  Missed
+                </span>
+              )}
             </div>
 
             {task.description && (

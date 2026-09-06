@@ -27,12 +27,14 @@ interface ScheduleContextType {
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTaskCompletion: (id: string) => Promise<void>;
+  toggleTaskMissed: (id: string) => Promise<void>;
   scheduleTask: (taskId: string, date: string, startTime: string, durationMinutes?: number) => Promise<void>;
   unscheduleTask: (taskId: string) => Promise<void>;
   addHabit: (habit: Omit<Habit, "id" | "createdAt" | "streak" | "completedDates">) => Promise<void>;
   updateHabit: (id: string, updates: Partial<Habit>) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   toggleHabitCompletion: (habitId: string, date: string) => Promise<void>;
+  toggleHabitMissed: (habitId: string, date: string) => Promise<void>;
   scheduleHabitForToday: (habitId: string) => Promise<void>;
   importBackupData: (tasks: Task[], habits: Habit[], categories?: Category[]) => void;
   resetToDefaults: () => Promise<void>;
@@ -479,7 +481,9 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     if (!habit) return;
 
     const isDone = habit.completedDates.includes(date);
+    const wasMissed = habit.missedDates?.includes(date);
     let newDates: string[];
+    let newMissedDates = habit.missedDates ? [...habit.missedDates] : [];
     let newStreak = habit.streak;
 
     if (isDone) {
@@ -488,6 +492,9 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     } else {
       newDates = [...habit.completedDates, date];
       newStreak += 1;
+      if (wasMissed) {
+        newMissedDates = newMissedDates.filter((d) => d !== date);
+      }
       try {
         confetti({
           particleCount: 60,
@@ -500,6 +507,34 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
     await updateHabit(habitId, {
       completedDates: newDates,
+      missedDates: newMissedDates,
+      streak: newStreak,
+    });
+  };
+
+  const toggleHabitMissed = async (habitId: string, date: string) => {
+    const habit = habits.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    const wasMissed = habit.missedDates?.includes(date);
+    const isDone = habit.completedDates.includes(date);
+    let newMissedDates: string[];
+    let newCompletedDates = [...habit.completedDates];
+    let newStreak = habit.streak;
+
+    if (wasMissed) {
+      newMissedDates = (habit.missedDates || []).filter((d) => d !== date);
+    } else {
+      newMissedDates = [...(habit.missedDates || []), date];
+      if (isDone) {
+        newCompletedDates = newCompletedDates.filter((d) => d !== date);
+        newStreak = Math.max(0, newStreak - 1);
+      }
+    }
+
+    await updateHabit(habitId, {
+      completedDates: newCompletedDates,
+      missedDates: newMissedDates,
       streak: newStreak,
     });
   };
@@ -510,6 +545,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     if (!task) return;
 
     const nextState = !task.completed;
+    const nextStatus = nextState ? "completed" : "pending";
     if (nextState) {
       try {
         confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
@@ -518,6 +554,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
     await updateTask(id, {
       completed: nextState,
+      status: nextStatus,
       completedAt: nextState ? new Date().toISOString() : undefined,
     });
 
@@ -532,6 +569,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           // Add date and increment streak
           await updateHabit(task.habitId, {
             completedDates: [...linkedHabit.completedDates, taskDate],
+            missedDates: (linkedHabit.missedDates || []).filter((d) => d !== taskDate),
             streak: linkedHabit.streak + 1,
           });
         } else if (!nextState && isDateDoneInHabit) {
@@ -541,6 +579,50 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
             streak: Math.max(0, linkedHabit.streak - 1),
           });
         }
+      }
+    }
+  };
+
+  const toggleTaskMissed = async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const isCurrentlyMissed = task.status === "missed";
+    const nextStatus = isCurrentlyMissed ? "pending" : "missed";
+
+    await updateTask(id, {
+      completed: false,
+      status: nextStatus,
+      completedAt: undefined,
+    });
+
+    // If this task is linked to a habit, sync the habit missedDates & streak
+    if (task.habitId) {
+      const taskDate = task.scheduledDate || selectedDate;
+      const linkedHabit = habits.find((h) => h.id === task.habitId);
+      if (linkedHabit) {
+        const isDoneInHabit = linkedHabit.completedDates.includes(taskDate);
+        let newStreak = linkedHabit.streak;
+        let newCompletedDates = [...linkedHabit.completedDates];
+        let newMissedDates = linkedHabit.missedDates ? [...linkedHabit.missedDates] : [];
+
+        if (nextStatus === "missed") {
+          if (isDoneInHabit) {
+            newCompletedDates = newCompletedDates.filter((d) => d !== taskDate);
+            newStreak = Math.max(0, newStreak - 1);
+          }
+          if (!newMissedDates.includes(taskDate)) {
+            newMissedDates.push(taskDate);
+          }
+        } else {
+          newMissedDates = newMissedDates.filter((d) => d !== taskDate);
+        }
+
+        await updateHabit(task.habitId, {
+          completedDates: newCompletedDates,
+          missedDates: newMissedDates,
+          streak: newStreak,
+        });
       }
     }
   };
@@ -673,12 +755,14 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         updateTask,
         deleteTask,
         toggleTaskCompletion,
+        toggleTaskMissed,
         scheduleTask,
         unscheduleTask,
         addHabit,
         updateHabit,
         deleteHabit,
         toggleHabitCompletion,
+        toggleHabitMissed,
         scheduleHabitForToday,
         importBackupData,
         resetToDefaults,

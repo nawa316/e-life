@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/lib/types";
 import { useSchedule } from "@/lib/store";
 import { timeToMinutes, formatMinutes, minutesToTime } from "@/lib/utils";
-import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, Pencil } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, Pencil, X } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 
@@ -17,7 +17,7 @@ interface TimeBlockProps {
 }
 
 export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBlockProps) {
-  const { toggleTaskCompletion, deleteTask, unscheduleTask, updateTask, categories } = useSchedule();
+  const { toggleTaskCompletion, toggleTaskMissed, deleteTask, unscheduleTask, updateTask, categories } = useSchedule();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editStartTime, setEditStartTime] = useState(task.startTime || "09:00");
@@ -33,6 +33,7 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
 
   const category = categories.find((c) => c.id === task.category);
   const categoryColor = category?.color || "#3b82f6";
+  const isMissed = task.status === "missed";
 
   const startMinutes = timeToMinutes(task.startTime || "09:00");
   const duration = task.estimatedMinutes || 30;
@@ -86,6 +87,8 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
         className={`group absolute left-14 right-2 sm:right-3 rounded-xl transition-all duration-150 border select-none overflow-hidden cursor-grab active:cursor-grabbing touch-none shadow-xs ${
           task.completed
             ? "bg-zinc-900/40 border-zinc-800/60 text-zinc-500 opacity-60"
+            : isMissed
+            ? "bg-red-950/20 border-red-500/40 text-red-200/90 shadow-md"
             : "bg-zinc-900/95 hover:bg-zinc-850/95 border-zinc-800 hover:border-zinc-700 shadow-md hover:shadow-lg"
         } ${isDragging ? "ring-2 ring-blue-500 scale-[1.02] z-50 shadow-2xl" : ""}`}
       >
@@ -93,28 +96,49 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
         <div
           className="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-xl transition-all"
           style={{
-            backgroundColor: task.completed ? "#52525b" : categoryColor,
+            backgroundColor: task.completed ? "#52525b" : isMissed ? "#ef4444" : categoryColor,
           }}
         />
 
-        <div className="flex items-center justify-between gap-2 h-full px-2.5 py-1.5 pl-3.5">
+        <div className="flex items-center justify-between gap-2 h-full px-2 py-1.5 pl-3">
           {/* Main Info */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {/* Complete Toggle */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleTaskCompletion(task.id);
-              }}
-              className="text-zinc-500 hover:text-blue-400 transition-colors cursor-pointer shrink-0"
-            >
-              {task.completed ? (
-                <CheckCircle2 size={16} className="text-emerald-500" />
-              ) : (
-                <Circle size={16} />
-              )}
-            </button>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {/* Status Buttons: Complete & Missed */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              {/* Complete Toggle */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTaskCompletion(task.id);
+                }}
+                className="text-zinc-500 hover:text-emerald-400 p-0.5 transition-colors cursor-pointer shrink-0"
+                title={task.completed ? "Mark uncompleted" : "Mark as completed (Done)"}
+              >
+                {task.completed ? (
+                  <CheckCircle2 size={16} className="text-emerald-500" />
+                ) : (
+                  <Circle size={16} />
+                )}
+              </button>
+
+              {/* Miss Toggle */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTaskMissed(task.id);
+                }}
+                className={`p-0.5 transition-colors cursor-pointer shrink-0 rounded ${
+                  isMissed
+                    ? "text-red-400 hover:text-red-300"
+                    : "text-zinc-600 hover:text-red-400"
+                }`}
+                title={isMissed ? "Undo missed status" : "Mark task as missed / unsuccessful"}
+              >
+                <X size={15} className={isMissed ? "stroke-[2.5] text-red-500" : ""} />
+              </button>
+            </div>
 
             {/* Title & Info */}
             <div
@@ -126,12 +150,22 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             >
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span
-                  className={`text-xs font-semibold text-zinc-100 truncate ${
-                    task.completed ? "line-through text-zinc-500" : ""
+                  className={`text-xs font-semibold truncate ${
+                    task.completed
+                      ? "line-through text-zinc-500"
+                      : isMissed
+                      ? "text-red-300 line-through"
+                      : "text-zinc-100"
                   }`}
                 >
                   {task.title}
                 </span>
+
+                {isMissed && (
+                  <span className="text-[9px] bg-red-500/15 text-red-400 border border-red-500/30 px-1 py-0.2 rounded font-medium">
+                    Missed
+                  </span>
+                )}
 
                 {task.isHabitInstance && (
                   <span className="flex items-center gap-0.5 text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1 py-0.2 rounded font-medium">

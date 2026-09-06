@@ -7,6 +7,8 @@ export type Category = {
   icon?: string;
 };
 
+export type TaskStatus = 'pending' | 'completed' | 'missed';
+
 export type Task = {
   id: string;
   title: string;
@@ -15,6 +17,7 @@ export type Task = {
   priority: Priority;
   estimatedMinutes: number;
   completed: boolean;
+  status?: TaskStatus;
   completedAt?: string;
   scheduledDate?: string; // YYYY-MM-DD
   startTime?: string;     // HH:mm (e.g., "09:30")
@@ -38,6 +41,7 @@ export type Habit = {
   daysOfWeek?: number[]; // 0=Sunday, 1=Monday, ..., 6=Saturday
   streak: number;
   completedDates: string[]; // ['2026-09-01', '2026-09-02']
+  missedDates?: string[]; // ['2026-09-01']
   icon: string;
   color: string;
   createdAt: string;
