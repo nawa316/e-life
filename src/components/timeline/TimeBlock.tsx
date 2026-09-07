@@ -162,9 +162,26 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
                 </span>
 
                 {isMissed && (
-                  <span className="text-[9px] bg-red-500/15 text-red-400 border border-red-500/30 px-1 py-0.2 rounded font-medium">
+                  <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/40 px-1.5 py-0.2 rounded font-medium">
                     Missed
                   </span>
+                )}
+
+                {/* Prominent Restore Button on Schedule Card */}
+                {isMissed && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTaskMissed(task.id);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900/90 border border-emerald-500/50 rounded-md cursor-pointer transition-all active:scale-95 shadow-xs"
+                    title="Restore / undo missed status"
+                  >
+                    <RotateCcw size={11} className="stroke-[2.5]" />
+                    <span>Restore</span>
+                  </button>
                 )}
 
                 {task.isHabitInstance && (
@@ -216,22 +233,6 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             >
               +15m
             </button>
-
-            {/* Explicit Restore Button for Missed Tasks */}
-            {isMissed && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleTaskMissed(task.id);
-                }}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg cursor-pointer transition-all active:scale-95"
-                title="Restore / undo missed status"
-              >
-                <RotateCcw size={12} />
-                <span>Restore</span>
-              </button>
-            )}
 
             {/* Explicit Edit Button */}
             <button
