@@ -28,13 +28,13 @@ export function AnalyticsView() {
   const totalCompletedMinutes = completedToday.reduce((acc, t) => acc + (t.estimatedMinutes || 0), 0);
   const totalMissedMinutes = missedToday.reduce((acc, t) => acc + (t.estimatedMinutes || 0), 0);
 
-  const allMissedTasks = tasks.filter((t) => t.status === "missed");
+  const allMissedTasks = tasks.filter((t) => t.status === "missed" && !t.isHabitInstance && !t.habitId);
   const completionPct = todayTasks.length > 0
     ? Math.round((completedToday.length / todayTasks.length) * 100)
     : 0;
 
   const totalStreak = habits.reduce((acc, h) => acc + h.streak, 0);
-  const backlogTasks = tasks.filter((t) => !t.scheduledDate && t.status !== "missed");
+  const backlogTasks = tasks.filter((t) => !t.scheduledDate && t.status !== "missed" && !t.isHabitInstance && !t.habitId);
   const totalCompletedAllTime = tasks.filter((t) => t.completed || t.status === "completed").length;
 
   // Category breakdown

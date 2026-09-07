@@ -34,8 +34,8 @@ export function BacklogDrawer() {
   const [activeTab, setActiveTab] = useState<"active" | "missed">("active");
 
   // Filter unscheduled backlog tasks
-  const backlogTasks = tasks.filter((task) => !task.scheduledDate);
-  const missedTasks = tasks.filter((task) => task.status === "missed");
+  const backlogTasks = tasks.filter((task) => !task.scheduledDate && !task.isHabitInstance && !task.habitId);
+  const missedTasks = tasks.filter((task) => task.status === "missed" && !task.isHabitInstance && !task.habitId);
   const targetTaskList = activeTab === "active" ? backlogTasks.filter((t) => t.status !== "missed") : missedTasks;
 
   const filteredTasks = targetTaskList.filter((task) => {
