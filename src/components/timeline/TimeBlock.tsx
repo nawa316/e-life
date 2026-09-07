@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/lib/types";
 import { useSchedule } from "@/lib/store";
 import { timeToMinutes, formatMinutes, minutesToTime } from "@/lib/utils";
-import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, Pencil, X } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Trash2, ArrowUpRight, Flame, Pencil, X, RotateCcw } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 
@@ -216,6 +216,22 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             >
               +15m
             </button>
+
+            {/* Explicit Restore Button for Missed Tasks */}
+            {isMissed && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTaskMissed(task.id);
+                }}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg cursor-pointer transition-all active:scale-95"
+                title="Restore / undo missed status"
+              >
+                <RotateCcw size={12} />
+                <span>Restore</span>
+              </button>
+            )}
 
             {/* Explicit Edit Button */}
             <button

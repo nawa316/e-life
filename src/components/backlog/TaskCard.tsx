@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Task } from "@/lib/types";
 import { Badge } from "../ui/Badge";
 import { formatMinutes } from "@/lib/utils";
-import { GripVertical, Clock, CheckCircle2, Circle, Trash2, CalendarPlus, ChevronRight, X } from "lucide-react";
+import { GripVertical, Clock, CheckCircle2, Circle, Trash2, CalendarPlus, ChevronRight, X, RotateCcw } from "lucide-react";
 import { useSchedule } from "@/lib/store";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -176,6 +176,23 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
 
           {/* Action icons */}
           <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+            {/* Restore from Missed button */}
+            {isMissed && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTaskMissed(task.id);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg cursor-pointer transition-all active:scale-95 shadow-2xs"
+                title="Restore / unmark missed status"
+              >
+                <RotateCcw size={13} />
+                <span>Restore</span>
+              </button>
+            )}
+
             {showScheduleAction && !task.scheduledDate && (
               <button
                 type="button"
