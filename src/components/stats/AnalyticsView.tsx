@@ -8,18 +8,16 @@ import {
   Flame,
   Clock,
   BarChart3,
-  RotateCcw,
   TrendingUp,
   Target,
   Layers,
   CalendarCheck,
   Calendar,
 } from "lucide-react";
-import { Button } from "../ui/Button";
 import { HabitHeatmap } from "../habits/HabitHeatmap";
 
 export function AnalyticsView() {
-  const { tasks, habits, categories, selectedDate, resetToDefaults, updateTask, deleteTask } = useSchedule();
+  const { tasks, habits, categories, selectedDate } = useSchedule();
 
   const todayTasks = tasks.filter((t) => t.scheduledDate === selectedDate);
   const completedToday = todayTasks.filter((t) => t.completed || t.status === "completed");
@@ -52,39 +50,17 @@ export function AnalyticsView() {
     };
   });
 
-  const handleRestoreTask = (taskId: string) => {
-    updateTask(taskId, { status: "pending", completed: false });
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    if (confirm("Permanently remove this missed task?")) {
-      deleteTask(taskId);
-    }
-  };
-
   return (
     <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-4 sm:p-6 overflow-y-auto space-y-6 backdrop-blur-md h-[760px]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-800/80">
-        <div>
-          <div className="flex items-center gap-2">
-            <BarChart3 className="text-blue-500" size={22} />
-            <h2 className="text-lg font-bold text-zinc-100">Performance & Statistics</h2>
-          </div>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Overview of your daily focus, completed vs missed activities, habit consistency, and backlog metrics.
-          </p>
+      <div className="pb-4 border-b border-zinc-800/80">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="text-blue-500" size={22} />
+          <h2 className="text-lg font-bold text-zinc-100">Performance & Statistics</h2>
         </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={resetToDefaults}
-          className="self-start sm:self-auto text-xs"
-        >
-          <RotateCcw size={13} />
-          Reset Demo Data
-        </Button>
+        <p className="text-xs text-zinc-400 mt-0.5">
+          Overview of your daily focus, completed vs missed activities, habit consistency, and backlog metrics.
+        </p>
       </div>
 
       {/* 4 Main Summary Metric Cards */}
@@ -99,53 +75,60 @@ export function AnalyticsView() {
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-zinc-100">{completionPct}%</div>
-            <div className="w-full bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden flex">
-              <div
-                className="bg-emerald-500 h-full transition-all duration-300"
-                style={{ width: `${todayTasks.length > 0 ? (completedToday.length / todayTasks.length) * 100 : 0}%` }}
-                title={`${completedToday.length} completed`}
-              />
-              <div
-                className="bg-red-500/80 h-full transition-all duration-300"
-                style={{ width: `${todayTasks.length > 0 ? (missedToday.length / todayTasks.length) * 100 : 0}%` }}
-                title={`${missedToday.length} missed`}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[11px] text-zinc-400 mt-2">
-              <span className="text-emerald-400">{completedToday.length} Done</span>
-              <span className="text-red-400 font-medium">{missedToday.length} Missed</span>
-              <span>{todayTasks.length} Total</span>
-            </div>
+            <p className="text-[11px] text-zinc-500 mt-1">
+              {completedToday.length} done {missedToday.length > 0 && <span className="text-red-400 font-medium">• {missedToday.length} missed</span>} of {todayTasks.length} planned
+            </p>
+          </div>
+          {/* Dual Progress Bar: Green for Done, Red for Missed */}
+          <div className="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden mt-3 flex">
+            <div
+              className="h-full bg-emerald-500 transition-all duration-300"
+              style={{ width: `${completionPct}%` }}
+              title={`Completed: ${completionPct}%`}
+            />
+            <div
+              className="h-full bg-red-500/80 transition-all duration-300"
+              style={{
+                width: `${todayTasks.length > 0 ? (missedToday.length / todayTasks.length) * 100 : 0}%`,
+              }}
+              title={`Missed: ${todayTasks.length > 0 ? Math.round((missedToday.length / todayTasks.length) * 100) : 0}%`}
+            />
           </div>
         </div>
 
-        {/* Active Habit Streaks */}
+        {/* Current Habit Consistency */}
         <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400 font-medium">Active Habit Streaks</span>
+            <span className="text-xs text-zinc-400 font-medium">Habit Streaks</span>
             <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Flame size={17} className="fill-amber-500/20" />
+              <Flame size={17} />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-zinc-100">{totalStreak} <span className="text-sm font-normal text-zinc-500">days</span></div>
-            <p className="text-[11px] text-zinc-500 mt-3">
-              Across {habits.length} active recurring routines
+            <div className="text-2xl font-bold text-amber-400">{totalStreak} <span className="text-sm font-normal text-zinc-500">days</span></div>
+            <p className="text-[11px] text-zinc-500 mt-1">
+              Across {habits.length} active habits
             </p>
+          </div>
+          <div className="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden mt-3">
+            <div
+              className="h-full bg-linear-to-r from-amber-500 to-orange-500 rounded-full"
+              style={{ width: `${Math.min(100, totalStreak * 10)}%` }}
+            />
           </div>
         </div>
 
-        {/* Focus Time Today (Done vs Missed) */}
+        {/* Focus Time vs Missed Time */}
         <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400 font-medium">Focus Time Today</span>
+            <span className="text-xs text-zinc-400 font-medium">Focus Time</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
               <Clock size={17} />
             </div>
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-zinc-100">{formatMinutes(totalCompletedMinutes)}</div>
-            <div className="flex items-center justify-between text-[11px] text-zinc-500 mt-3">
+            <div className="flex items-center gap-2 text-[11px] text-zinc-500 mt-1">
               <span>Planned: {formatMinutes(totalPlannedMinutes)}</span>
               {totalMissedMinutes > 0 && (
                 <span className="text-red-400/90 font-medium">Missed: {formatMinutes(totalMissedMinutes)}</span>
@@ -157,84 +140,18 @@ export function AnalyticsView() {
         {/* Missed & Backlog Health */}
         <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400 font-medium">Missed Tasks</span>
-            <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center">
+            <span className="text-xs text-zinc-400 font-medium">Total Activity</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
               <Layers size={17} />
             </div>
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-bold text-red-400">{allMissedTasks.length} <span className="text-sm font-normal text-zinc-500">missed</span></div>
-            <p className="text-[11px] text-zinc-500 mt-3">
-              {totalCompletedAllTime} completed • {backlogTasks.length} in backlog
+            <div className="text-2xl font-bold text-purple-400">{totalCompletedAllTime} <span className="text-sm font-normal text-zinc-500">done</span></div>
+            <p className="text-[11px] text-zinc-500 mt-1">
+              {backlogTasks.length} waiting in backlog
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Missed Tasks Manager Section (Restore or Delete) */}
-      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-            <h3 className="text-sm font-semibold text-zinc-200">Missed Activities & Tasks</h3>
-            <span className="text-xs bg-red-500/15 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-semibold">
-              {allMissedTasks.length}
-            </span>
-          </div>
-          <p className="text-[11px] text-zinc-500 hidden sm:block">
-            You can restore any missed task back to active status or delete it.
-          </p>
-        </div>
-
-        {allMissedTasks.length === 0 ? (
-          <div className="py-6 text-center border border-dashed border-zinc-800/80 rounded-xl">
-            <p className="text-xs text-zinc-400">Great job! You have zero missed tasks.</p>
-          </div>
-        ) : (
-          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-            {allMissedTasks.map((t) => {
-              const cat = categories.find((c) => c.id === t.category);
-              return (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between p-2.5 bg-zinc-950/70 border border-red-500/25 rounded-xl text-xs gap-3 hover:border-red-500/40 transition-all"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: cat?.color || "#ef4444" }}
-                    />
-                    <div className="truncate">
-                      <p className="font-semibold text-zinc-200 line-through truncate">{t.title}</p>
-                      <p className="text-[10px] text-zinc-500">
-                        {t.scheduledDate || "Backlog"} {t.startTime ? `• ${t.startTime}` : ""} • {formatMinutes(t.estimatedMinutes || 30)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleRestoreTask(t.id)}
-                      className="px-2.5 py-1 text-[11px] font-semibold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg cursor-pointer transition-colors"
-                      title="Restore task to active"
-                    >
-                      Restore
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteTask(t.id)}
-                      className="px-2.5 py-1 text-[11px] font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg cursor-pointer transition-colors"
-                      title="Delete missed task"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* Category Breakdown & Habit Consistency */}
