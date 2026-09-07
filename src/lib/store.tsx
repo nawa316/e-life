@@ -223,8 +223,10 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const client = supabase;
+
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        const { data: { session: initialSession } } = await client.auth.getSession();
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
 
@@ -242,7 +244,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Listen for auth state changes (login, logout, refresh)
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      const { data: { subscription } } = client.auth.onAuthStateChange(async (_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -253,8 +255,48 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
+      // Real-time Database Subscription for instant cross-device updates (Desktop <-> Mobile)
+      const channel = client
+        .channel("db-changes")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "tasks" },
+          async () => {
+            const { data: { session: curSession } } = await client.auth.getSession();
+            if (curSession?.user) {
+              await loadUserData(curSession.user);
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "habits" },
+          async () => {
+            const { data: { session: curSession } } = await client.auth.getSession();
+            if (curSession?.user) {
+              await loadUserData(curSession.user);
+            }
+          }
+        )
+        .subscribe();
+
+      // Listen for visibility / tab focus changes to auto-refresh data when switching to mobile browser
+      const handleVisibilityChange = async () => {
+        if (document.visibilityState === "visible") {
+          const { data: { session: curSession } } = await client.auth.getSession();
+          if (curSession?.user) {
+            await loadUserData(curSession.user);
+          }
+        }
+      };
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("focus", handleVisibilityChange);
+
       return () => {
         subscription.unsubscribe();
+        client.removeChannel(channel);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("focus", handleVisibilityChange);
       };
     }
 
