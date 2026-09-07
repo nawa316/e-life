@@ -712,6 +712,21 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       missedDates: newMissedDates,
       streak: newStreak,
     });
+
+    // Synchronize to any scheduled tasks on the Day Schedule for this habit & date
+    const targetStatus = !isDone ? "completed" : "pending";
+    const matchingTasks = tasks.filter(
+      (t) => (t.habitId === habitId || (t.isHabitInstance && t.title.toLowerCase().trim() === habit.title.toLowerCase().trim())) &&
+             (t.scheduledDate === date || (!t.scheduledDate && date === selectedDate))
+    );
+
+    for (const t of matchingTasks) {
+      await updateTask(t.id, {
+        completed: !isDone,
+        status: targetStatus,
+        completedAt: !isDone ? new Date().toISOString() : undefined,
+      });
+    }
   };
 
   const toggleHabitMissed = async (habitId: string, date: string) => {
@@ -739,6 +754,21 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       missedDates: newMissedDates,
       streak: newStreak,
     });
+
+    // Synchronize to any scheduled tasks on the Day Schedule for this habit & date
+    const targetStatus = !wasMissed ? "missed" : "pending";
+    const matchingTasks = tasks.filter(
+      (t) => (t.habitId === habitId || (t.isHabitInstance && t.title.toLowerCase().trim() === habit.title.toLowerCase().trim())) &&
+             (t.scheduledDate === date || (!t.scheduledDate && date === selectedDate))
+    );
+
+    for (const t of matchingTasks) {
+      await updateTask(t.id, {
+        completed: false,
+        status: targetStatus,
+        completedAt: undefined,
+      });
+    }
   };
 
   // Synchronized completion for tasks & habits
