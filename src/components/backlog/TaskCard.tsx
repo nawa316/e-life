@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Task } from "@/lib/types";
+import { Task, Priority } from "@/lib/types";
 import { Badge } from "../ui/Badge";
 import { formatMinutes } from "@/lib/utils";
-import { GripVertical, Clock, CheckCircle2, Circle, Trash2, CalendarPlus, ChevronRight, X, RotateCcw } from "lucide-react";
+import { GripVertical, Clock, CheckCircle2, Circle, Trash2, CalendarPlus, ChevronRight, X, RotateCcw, Pencil } from "lucide-react";
 import { useSchedule } from "@/lib/store";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -18,11 +18,43 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardProps) {
-  const { toggleTaskCompletion, toggleTaskMissed, restoreMissedTask, deleteTask, scheduleTask, selectedDate, categories } = useSchedule();
+  const { toggleTaskCompletion, toggleTaskMissed, restoreMissedTask, deleteTask, updateTask, scheduleTask, selectedDate, categories } = useSchedule();
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(selectedDate);
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [duration, setDuration] = useState(task.estimatedMinutes || 30);
+
+  // Edit Task Modal state (works directly on mobile and desktop)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [editDescription, setEditDescription] = useState(task.description || "");
+  const [editCategory, setEditCategory] = useState(task.category || categories[0]?.id || "work");
+  const [editPriority, setEditPriority] = useState<Priority>(task.priority || "medium");
+  const [editDuration, setEditDuration] = useState(task.estimatedMinutes || 30);
+
+  const openEditModal = () => {
+    setEditTitle(task.title);
+    setEditDescription(task.description || "");
+    setEditCategory(task.category || categories[0]?.id || "work");
+    setEditPriority(task.priority || "medium");
+    setEditDuration(task.estimatedMinutes || 30);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim()) return;
+
+    updateTask(task.id, {
+      title: editTitle.trim(),
+      description: editDescription.trim() || undefined,
+      category: editCategory,
+      priority: editPriority,
+      estimatedMinutes: Number(editDuration) || 30,
+    });
+
+    setIsEditModalOpen(false);
+  };
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `backlog-${task.id}`,
@@ -112,11 +144,13 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
 
           {/* Task Details */}
           <div
-            className="flex-1 min-w-0"
+            className="flex-1 min-w-0 cursor-pointer"
             onClick={(e) => {
+              e.stopPropagation();
               if (onEdit) {
-                e.stopPropagation();
                 onEdit(task);
+              } else {
+                openEditModal();
               }
             }}
           >
@@ -208,11 +242,32 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
                 <span className="hidden xs:inline">Schedule</span>
               </button>
             )}
+
+            {/* Explicit Edit Button for Mobile & Desktop */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                deleteTask(task.id);
+                if (onEdit) {
+                  onEdit(task);
+                } else {
+                  openEditModal();
+                }
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="p-1.5 text-zinc-400 hover:text-blue-400 hover:bg-zinc-800 rounded-md cursor-pointer transition-colors"
+              title="Edit task"
+            >
+              <Pencil size={14} />
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`Delete task "${task.title}"?`)) {
+                  deleteTask(task.id);
+                }
               }}
               onPointerDown={(e) => e.stopPropagation()}
               className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-md cursor-pointer transition-colors"
@@ -304,6 +359,104 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
             <Button type="submit">
               <CalendarPlus size={14} />
               Confirm Schedule
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Task Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Activity Task"
+        description="Update task details, priority, category, or estimated duration."
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              Task Title *
+            </label>
+            <input
+              type="text"
+              required
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              Description
+            </label>
+            <textarea
+              rows={2}
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-blue-500 resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                Category
+              </label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                Priority
+              </label>
+              <select
+                value={editPriority}
+                onChange={(e) => setEditPriority(e.target.value as Priority)}
+                className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              Estimated Duration (minutes)
+            </label>
+            <input
+              type="number"
+              min={5}
+              max={480}
+              step={5}
+              value={editDuration}
+              onChange={(e) => setEditDuration(Number(e.target.value))}
+              className="w-full bg-zinc-800/80 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-zinc-800">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              Save Changes
             </Button>
           </div>
         </form>
