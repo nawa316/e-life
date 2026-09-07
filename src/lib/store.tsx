@@ -408,42 +408,26 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (tasks.length > 0) {
-        const taskPayload = tasks.map((t) => {
-          const effectiveStatus = t.status || (t.completed ? "completed" : "pending");
-          let effectiveTags = t.tags ? [...t.tags] : [];
-          if (effectiveStatus === "missed" && !effectiveTags.includes("status:missed")) {
-            effectiveTags.push("status:missed");
-          } else if (effectiveStatus !== "missed") {
-            effectiveTags = effectiveTags.filter((tag) => tag !== "status:missed" && tag !== "missed");
-          }
+        const taskPayload = tasks.map((t) => ({
+          id: t.id,
+          user_id: user.id,
+          title: t.title,
+          description: t.description || null,
+          category: t.category,
+          priority: t.priority,
+          estimated_minutes: t.estimatedMinutes,
+          completed: t.completed,
+          completed_at: t.completedAt || null,
+          scheduled_date: t.scheduledDate || null,
+          start_time: t.startTime || null,
+          end_time: t.endTime || null,
+          is_habit_instance: t.isHabitInstance || false,
+          habit_id: t.habitId || null,
+        }));
 
-          return {
-            id: t.id,
-            user_id: user.id,
-            title: t.title,
-            description: t.description || null,
-            category: t.category,
-            priority: t.priority,
-            estimated_minutes: t.estimatedMinutes,
-            completed: t.completed,
-            status: effectiveStatus,
-            completed_at: t.completedAt || null,
-            scheduled_date: t.scheduledDate || null,
-            start_time: t.startTime || null,
-            end_time: t.endTime || null,
-            is_habit_instance: t.isHabitInstance || false,
-            habit_id: t.habitId || null,
-            tags: effectiveTags,
-          };
-        });
-
-        // Try upserting full payload
         const { error } = await supabase.from("tasks").upsert(taskPayload, { onConflict: "id" });
         if (error) {
-          console.warn("Task sync error, attempting fallback without custom status column:", error);
-          // If status column doesn't exist on remote DB yet, upsert without status column (tags still preserve missed status)
-          const fallbackPayload = taskPayload.map(({ status, ...rest }) => rest);
-          await supabase.from("tasks").upsert(fallbackPayload, { onConflict: "id" });
+          console.error("Task sync error:", error);
         }
       }
 
@@ -467,7 +451,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
             frequency: h.frequency,
             streak: h.streak || 0,
             completed_dates: h.completedDates || [],
-            missed_dates: h.missedDates || [],
             icon: h.icon || "Flame",
             color: h.color || "#f59e0b",
           };
@@ -475,9 +458,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
         const { error } = await supabase.from("habits").upsert(habitPayload, { onConflict: "id" });
         if (error) {
-          console.warn("Habit sync error, attempting fallback without missed_dates column:", error);
-          const fallbackHabitPayload = habitPayload.map(({ missed_dates, ...rest }) => rest);
-          await supabase.from("habits").upsert(fallbackHabitPayload, { onConflict: "id" });
+          console.warn("Habit sync error:", error);
         }
       }
 
@@ -514,20 +495,16 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         priority: newTask.priority,
         estimated_minutes: newTask.estimatedMinutes,
         completed: newTask.completed,
-        status: newTask.status || "pending",
         scheduled_date: newTask.scheduledDate || null,
         start_time: newTask.startTime || null,
         end_time: newTask.endTime || null,
         is_habit_instance: newTask.isHabitInstance || false,
         habit_id: newTask.habitId || null,
-        tags: newTask.tags || [],
       };
 
       const { error } = await supabase.from("tasks").insert([payload]);
       if (error) {
-        console.warn("Error inserting task, trying fallback without status column:", error);
-        delete payload.status;
-        await supabase.from("tasks").insert([payload]);
+        console.error("Error inserting task to Supabase:", error);
       }
     }
   };
@@ -555,17 +532,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
     if (user && isSupabaseConfigured && supabase) {
       const currentTask = resolvedUpdatedTask || tasks.find((t) => t.id === id);
-      const effectiveStatus = updates.status ?? currentTask?.status ?? (updates.completed ? "completed" : "pending");
-      let effectiveTags = updates.tags ?? currentTask?.tags ?? [];
-      if (effectiveStatus === "missed" && !effectiveTags.includes("status:missed")) {
-        effectiveTags = [...effectiveTags, "status:missed"];
-      } else if (effectiveStatus !== "missed") {
-        effectiveTags = effectiveTags.filter((tag) => tag !== "status:missed" && tag !== "missed");
-      }
-
       const dbUpdates: any = { 
         updated_at: new Date().toISOString(),
-        tags: effectiveTags,
       };
       if (updates.title !== undefined) dbUpdates.title = updates.title;
       if (updates.description !== undefined) dbUpdates.description = updates.description;
@@ -573,7 +541,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
       if (updates.estimatedMinutes !== undefined) dbUpdates.estimated_minutes = updates.estimatedMinutes;
       if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
-      if (updates.status !== undefined) dbUpdates.status = updates.status;
       if (updates.completedAt !== undefined) dbUpdates.completed_at = updates.completedAt;
       if (updates.scheduledDate !== undefined) dbUpdates.scheduled_date = updates.scheduledDate;
       if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
@@ -581,29 +548,22 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const { error } = await supabase.from("tasks").update(dbUpdates).eq("id", id).eq("user_id", user.id);
-        if (error) {
-          console.warn("Direct update failed, trying without status column or upsert:", error);
-          const fallbackUpdates = { ...dbUpdates };
-          delete fallbackUpdates.status;
-          const { error: err2 } = await supabase.from("tasks").update(fallbackUpdates).eq("id", id).eq("user_id", user.id);
-          if (err2 && currentTask) {
-            await supabase.from("tasks").upsert({
-              id: currentTask.id,
-              user_id: user.id,
-              title: updates.title ?? currentTask.title,
-              description: updates.description ?? currentTask.description ?? null,
-              category: updates.category ?? currentTask.category,
-              priority: updates.priority ?? currentTask.priority,
-              estimated_minutes: updates.estimatedMinutes ?? currentTask.estimatedMinutes,
-              completed: updates.completed ?? currentTask.completed,
-              scheduled_date: updates.scheduledDate ?? currentTask.scheduledDate ?? null,
-              start_time: updates.startTime ?? currentTask.startTime ?? null,
-              end_time: updates.endTime ?? currentTask.endTime ?? null,
-              is_habit_instance: currentTask.isHabitInstance || false,
-              habit_id: currentTask.habitId || null,
-              tags: effectiveTags,
-            });
-          }
+        if (error && currentTask) {
+          await supabase.from("tasks").upsert({
+            id: currentTask.id,
+            user_id: user.id,
+            title: updates.title ?? currentTask.title,
+            description: updates.description ?? currentTask.description ?? null,
+            category: updates.category ?? currentTask.category,
+            priority: updates.priority ?? currentTask.priority,
+            estimated_minutes: updates.estimatedMinutes ?? currentTask.estimatedMinutes,
+            completed: updates.completed ?? currentTask.completed,
+            scheduled_date: updates.scheduledDate ?? currentTask.scheduledDate ?? null,
+            start_time: updates.startTime ?? currentTask.startTime ?? null,
+            end_time: updates.endTime ?? currentTask.endTime ?? null,
+            is_habit_instance: currentTask.isHabitInstance || false,
+            habit_id: currentTask.habitId || null,
+          });
         }
       } catch (err) {
         console.error("Failed to update task in Supabase:", err);
