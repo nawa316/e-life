@@ -86,6 +86,12 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
             resolvedStatus = "completed";
           }
 
+          // Normalize scheduled_date (e.g., handles "2026-09-07T00:00:00+00:00" or "2026-09-07")
+          let normalizedScheduledDate = t.scheduled_date || undefined;
+          if (normalizedScheduledDate && typeof normalizedScheduledDate === "string" && normalizedScheduledDate.includes("T")) {
+            normalizedScheduledDate = normalizedScheduledDate.split("T")[0];
+          }
+
           return {
             id: t.id,
             title: t.title,
@@ -96,7 +102,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
             completed: Boolean(t.completed),
             status: resolvedStatus,
             completedAt: t.completed_at || undefined,
-            scheduledDate: t.scheduled_date || undefined,
+            scheduledDate: normalizedScheduledDate,
             startTime: t.start_time || undefined,
             endTime: t.end_time || undefined,
             isHabitInstance: Boolean(t.is_habit_instance),
@@ -149,7 +155,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         }));
       }
 
-      // If user has local cache data for this user ID, merge/fallback
+      // If user has local cache data for this user ID, intelligently merge
       const localCachedTasks = localStorage.getItem(`elife_tasks_user_${currentUser.id}`);
       const localCachedHabits = localStorage.getItem(`elife_habits_user_${currentUser.id}`);
       
@@ -162,9 +168,16 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         try { parsedLocalHabits = JSON.parse(localCachedHabits); } catch (e) {}
       }
 
-      // If remote returned items, use them; if remote was empty (or failed), fallback to local cache
-      const finalTasks = loadedTasks.length > 0 ? loadedTasks : parsedLocalTasks;
-      const finalHabits = loadedHabits.length > 0 ? loadedHabits : parsedLocalHabits;
+      // Merge remote tasks with local cache by ID (remote takes precedence, local un-synced items preserved)
+      const taskMap = new Map<string, Task>();
+      parsedLocalTasks.forEach((t) => taskMap.set(t.id, t));
+      loadedTasks.forEach((t) => taskMap.set(t.id, t));
+      const finalTasks = Array.from(taskMap.values());
+
+      const habitMap = new Map<string, Habit>();
+      parsedLocalHabits.forEach((h) => habitMap.set(h.id, h));
+      loadedHabits.forEach((h) => habitMap.set(h.id, h));
+      const finalHabits = Array.from(habitMap.values());
 
       setTasks(finalTasks);
       setHabits(finalHabits);
