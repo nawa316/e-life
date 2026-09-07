@@ -4,10 +4,8 @@ import React, { useRef, useEffect, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useSchedule } from "@/lib/store";
 import { TimeBlock } from "./TimeBlock";
-import { minutesToTime, timeToMinutes, addMinutesToTime } from "@/lib/utils";
-import { Priority } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Plus } from "lucide-react";
-import { Modal } from "../ui/Modal";
+import { minutesToTime, timeToMinutes } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from "lucide-react";
 
 interface DayTimelineProps {
   startHour?: number;
@@ -65,42 +63,9 @@ function TimelineHourSlot({
 }
 
 export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
-  const { selectedDate, setSelectedDate, tasks, addTask, categories } = useSchedule();
+  const { selectedDate, setSelectedDate, tasks } = useSchedule();
   const timelineRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState<string>("");
-
-  // Add Task Modal state
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskDesc, setNewTaskDesc] = useState("");
-  const [newTaskStartTime, setNewTaskStartTime] = useState("09:00");
-  const [newTaskDuration, setNewTaskDuration] = useState(30);
-  const [newTaskCategory, setNewTaskCategory] = useState(categories[0]?.id || "work");
-  const [newTaskPriority, setNewTaskPriority] = useState<Priority>("medium");
-
-  const handleCreateScheduledTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-
-    const endTime = addMinutesToTime(newTaskStartTime, newTaskDuration);
-
-    await addTask({
-      title: newTaskTitle.trim(),
-      description: newTaskDesc.trim() || undefined,
-      category: newTaskCategory,
-      priority: newTaskPriority,
-      estimatedMinutes: Number(newTaskDuration) || 30,
-      completed: false,
-      status: "pending",
-      scheduledDate: selectedDate,
-      startTime: newTaskStartTime,
-      endTime,
-    });
-
-    setNewTaskTitle("");
-    setNewTaskDesc("");
-    setIsAddModalOpen(false);
-  };
 
   const PIXELS_PER_MINUTE = 1.35; // Height scaling factor
   const totalHours = endHour - startHour;
@@ -198,8 +163,8 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
           </div>
         </div>
 
-        {/* Daily progress indicators & Add Task button */}
-        <div className="flex items-center gap-2 sm:gap-3 text-xs self-end xs:self-auto flex-wrap">
+        {/* Daily progress indicators */}
+        <div className="flex items-center gap-3 text-xs self-end xs:self-auto">
           <div className="flex items-center gap-1 text-zinc-400 text-[11px] sm:text-xs">
             <Clock size={13} className="text-zinc-500" />
             <span>
@@ -208,7 +173,7 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="w-14 sm:w-20 h-1.5 sm:h-2 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-16 sm:w-20 h-1.5 sm:h-2 bg-zinc-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-linear-to-r from-blue-500 to-emerald-500 transition-all duration-300"
                 style={{
@@ -220,15 +185,6 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
               {completedCount}/{todayTasks.length}
             </span>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-          >
-            <Plus size={13} />
-            <span>Add Task</span>
-          </button>
         </div>
       </div>
 
@@ -310,120 +266,6 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
           ))}
         </div>
       </div>
-
-      {/* Quick Add Scheduled Task Modal for Day Timeline */}
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title={`Schedule Task for ${formattedDate}`}
-      >
-        <form onSubmit={handleCreateScheduledTask} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-              Task Title *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g., Deep Work Session"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-              Description (Optional)
-            </label>
-            <textarea
-              rows={2}
-              placeholder="Add key goals or details..."
-              value={newTaskDesc}
-              onChange={(e) => setNewTaskDesc(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Start Time
-              </label>
-              <input
-                type="time"
-                value={newTaskStartTime}
-                onChange={(e) => setNewTaskStartTime(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-hidden focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Duration (minutes)
-              </label>
-              <input
-                type="number"
-                min={10}
-                max={480}
-                step={5}
-                value={newTaskDuration}
-                onChange={(e) => setNewTaskDuration(Number(e.target.value))}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-hidden focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Category
-              </label>
-              <select
-                value={newTaskCategory}
-                onChange={(e) => setNewTaskCategory(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-hidden focus:border-blue-500"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Priority
-              </label>
-              <select
-                value={newTaskPriority}
-                onChange={(e) => setNewTaskPriority(e.target.value as Priority)}
-                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-hidden focus:border-blue-500"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setIsAddModalOpen(false)}
-              className="px-3 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-            >
-              Schedule Task
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }
