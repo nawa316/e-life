@@ -15,6 +15,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { HabitHeatmap } from "../habits/HabitHeatmap";
+import { VisualCharts } from "./VisualCharts";
 
 export function AnalyticsView() {
   const { tasks, habits, categories, selectedDate } = useSchedule();
@@ -153,6 +154,13 @@ export function AnalyticsView() {
           </div>
         </div>
       </div>
+
+      {/* Interactive Visual Analytics (Trend Chart, Donut / Pie Chart, Hourly Peak Bar Chart) */}
+      <VisualCharts
+        tasks={tasks}
+        categories={categories}
+        selectedDate={selectedDate}
+      />
 
       {/* Category Breakdown & Habit Consistency */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
