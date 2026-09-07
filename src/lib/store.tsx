@@ -76,9 +76,17 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
       if (tasksRes.data && tasksRes.data.length > 0) {
         loadedTasks = tasksRes.data.map((t) => {
-          // Resolve status: direct status column, tag flag, or completed boolean
           let resolvedStatus: "pending" | "completed" | "missed" = "pending";
-          if (t.status) {
+          let rawDesc = t.description || "";
+          let cleanDescription: string | undefined = t.description || undefined;
+
+          if (rawDesc.includes("__STATUS:missed__")) {
+            resolvedStatus = "missed";
+            cleanDescription = rawDesc.replace(/\n?__STATUS:[a-z]+__/, "").trim() || undefined;
+          } else if (rawDesc.includes("__STATUS:completed__")) {
+            resolvedStatus = "completed";
+            cleanDescription = rawDesc.replace(/\n?__STATUS:[a-z]+__/, "").trim() || undefined;
+          } else if (t.status) {
             resolvedStatus = t.status as any;
           } else if (t.tags && Array.isArray(t.tags) && (t.tags.includes("status:missed") || t.tags.includes("missed"))) {
             resolvedStatus = "missed";
@@ -95,7 +103,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           return {
             id: t.id,
             title: t.title,
-            description: t.description || undefined,
+            description: cleanDescription,
             category: t.category,
             priority: t.priority,
             estimatedMinutes: t.estimated_minutes,
@@ -408,22 +416,31 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
     try {
       if (tasks.length > 0) {
-        const taskPayload = tasks.map((t) => ({
-          id: t.id,
-          user_id: user.id,
-          title: t.title,
-          description: t.description || null,
-          category: t.category,
-          priority: t.priority,
-          estimated_minutes: t.estimatedMinutes,
-          completed: t.completed,
-          completed_at: t.completedAt || null,
-          scheduled_date: t.scheduledDate || null,
-          start_time: t.startTime || null,
-          end_time: t.endTime || null,
-          is_habit_instance: t.isHabitInstance || false,
-          habit_id: t.habitId || null,
-        }));
+        const taskPayload = tasks.map((t) => {
+          const effectiveStatus = t.status || (t.completed ? "completed" : "pending");
+          let rawDesc = t.description || "";
+          rawDesc = rawDesc.replace(/\n?__STATUS:[a-z]+__/, "").trim();
+          if (effectiveStatus === "missed") {
+            rawDesc = `${rawDesc}\n__STATUS:missed__`.trim();
+          }
+
+          return {
+            id: t.id,
+            user_id: user.id,
+            title: t.title,
+            description: rawDesc || null,
+            category: t.category,
+            priority: t.priority,
+            estimated_minutes: t.estimatedMinutes,
+            completed: t.completed,
+            completed_at: t.completedAt || null,
+            scheduled_date: t.scheduledDate || null,
+            start_time: t.startTime || null,
+            end_time: t.endTime || null,
+            is_habit_instance: t.isHabitInstance || false,
+            habit_id: t.habitId || null,
+          };
+        });
 
         const { error } = await supabase.from("tasks").upsert(taskPayload, { onConflict: "id" });
         if (error) {
@@ -486,11 +503,17 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) => [newTask, ...prev]);
 
     if (user && isSupabaseConfigured && supabase) {
+      let rawDesc = newTask.description || "";
+      rawDesc = rawDesc.replace(/\n?__STATUS:[a-z]+__/, "").trim();
+      if (effectiveStatus === "missed") {
+        rawDesc = `${rawDesc}\n__STATUS:missed__`.trim();
+      }
+
       const payload: any = {
         id: newTask.id,
         user_id: user.id,
         title: newTask.title,
-        description: newTask.description || null,
+        description: rawDesc || null,
         category: newTask.category,
         priority: newTask.priority,
         estimated_minutes: newTask.estimatedMinutes,
@@ -532,11 +555,19 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
     if (user && isSupabaseConfigured && supabase) {
       const currentTask = resolvedUpdatedTask || tasks.find((t) => t.id === id);
+      const effectiveStatus = updates.status ?? currentTask?.status ?? (updates.completed ? "completed" : "pending");
+      
+      let rawDesc = (updates.description !== undefined ? updates.description : currentTask?.description) || "";
+      rawDesc = rawDesc.replace(/\n?__STATUS:[a-z]+__/, "").trim();
+      if (effectiveStatus === "missed") {
+        rawDesc = `${rawDesc}\n__STATUS:missed__`.trim();
+      }
+
       const dbUpdates: any = { 
         updated_at: new Date().toISOString(),
+        description: rawDesc || null,
       };
       if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
       if (updates.category !== undefined) dbUpdates.category = updates.category;
       if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
       if (updates.estimatedMinutes !== undefined) dbUpdates.estimated_minutes = updates.estimatedMinutes;
@@ -553,7 +584,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
             id: currentTask.id,
             user_id: user.id,
             title: updates.title ?? currentTask.title,
-            description: updates.description ?? currentTask.description ?? null,
+            description: rawDesc || null,
             category: updates.category ?? currentTask.category,
             priority: updates.priority ?? currentTask.priority,
             estimated_minutes: updates.estimatedMinutes ?? currentTask.estimatedMinutes,
