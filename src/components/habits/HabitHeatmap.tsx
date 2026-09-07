@@ -39,34 +39,38 @@ export function HabitHeatmap({ habits, daysToShow = 21 }: HabitHeatmapProps) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {habits.slice(0, 4).map((habit) => (
-          <div key={habit.id} className="flex items-center gap-3">
-            <span className="text-xs font-medium text-zinc-300 w-28 truncate shrink-0" title={habit.title}>
-              {habit.title}
-            </span>
+      <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+        {habits.length === 0 ? (
+          <p className="text-xs text-zinc-500 text-center py-4">No habits tracked yet.</p>
+        ) : (
+          habits.map((habit) => (
+            <div key={habit.id} className="flex items-center gap-3">
+              <span className="text-xs font-medium text-zinc-300 w-36 truncate shrink-0" title={habit.title}>
+                {habit.title}
+              </span>
 
-            <div className="flex items-center gap-1 flex-1 overflow-x-auto pb-0.5">
-              {dates.map((d) => {
-                const isCompleted = habit.completedDates.includes(d.dateStr);
-                const isMissed = habit.missedDates?.includes(d.dateStr);
-                return (
-                  <div
-                    key={d.dateStr}
-                    title={`${habit.title} on ${d.dateStr}: ${isCompleted ? "Completed" : isMissed ? "Missed" : "No Activity"}`}
-                    className={`w-3.5 h-3.5 rounded-xs shrink-0 transition-colors ${
-                      isCompleted
-                        ? "bg-emerald-500 shadow-xs shadow-emerald-500/30"
-                        : isMissed
-                        ? "bg-red-500/80 shadow-xs shadow-red-500/30"
-                        : "bg-zinc-800/80 hover:bg-zinc-700/80"
-                    }`}
-                  />
-                );
-              })}
+              <div className="flex items-center gap-1 flex-1 overflow-x-auto pb-0.5">
+                {dates.map((d) => {
+                  const isCompleted = habit.completedDates.includes(d.dateStr);
+                  const isMissed = habit.missedDates?.includes(d.dateStr);
+                  return (
+                    <div
+                      key={d.dateStr}
+                      title={`${habit.title} on ${d.dateStr}: ${isCompleted ? "Completed" : isMissed ? "Missed" : "No Activity"}`}
+                      className={`w-3.5 h-3.5 rounded-xs shrink-0 transition-colors ${
+                        isCompleted
+                          ? "bg-emerald-500 shadow-xs shadow-emerald-500/30"
+                          : isMissed
+                          ? "bg-red-500/80 shadow-xs shadow-red-500/30"
+                          : "bg-zinc-800/80 hover:bg-zinc-700/80"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

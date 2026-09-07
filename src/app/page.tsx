@@ -20,7 +20,6 @@ import { DayTimeline } from "@/components/timeline/DayTimeline";
 import { WeeklyTimeline } from "@/components/timeline/WeeklyTimeline";
 import { BacklogDrawer } from "@/components/backlog/BacklogDrawer";
 import { HabitTracker } from "@/components/habits/HabitTracker";
-import { HabitHeatmap } from "@/components/habits/HabitHeatmap";
 import { AnalyticsView } from "@/components/stats/AnalyticsView";
 import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
 import { ExportModal } from "@/components/ui/ExportModal";
@@ -337,13 +336,12 @@ function ScheduleApp() {
                   )}
                 </div>
 
-                {/* Right Column: Habit Tracker & Consistency Heatmap */}
+                {/* Right Column: Habit Tracker */}
                 {rightPanelOpen && (
                   <div className="lg:col-span-3 space-y-4 animate-in fade-in duration-200">
-                    <div className="h-[520px]">
+                    <div className="h-[760px]">
                       <HabitTracker />
                     </div>
-                    <HabitHeatmap habits={habits} />
                   </div>
                 )}
               </div>
@@ -368,10 +366,9 @@ function ScheduleApp() {
 
                 {mobileTab === "habits" && (
                   <div className="h-[calc(100vh-140px)] min-h-[480px] overflow-y-auto space-y-4 pb-4">
-                    <div className="h-[460px]">
+                    <div className="h-full">
                       <HabitTracker />
                     </div>
-                    <HabitHeatmap habits={habits} />
                   </div>
                 )}
 

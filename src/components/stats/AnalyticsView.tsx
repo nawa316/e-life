@@ -16,6 +16,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { HabitHeatmap } from "../habits/HabitHeatmap";
 
 export function AnalyticsView() {
   const { tasks, habits, categories, selectedDate, resetToDefaults, updateTask, deleteTask } = useSchedule();
@@ -310,6 +311,11 @@ export function AnalyticsView() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Habit Completion Consistency Heatmap */}
+      <div>
+        <HabitHeatmap habits={habits} />
       </div>
     </div>
   );
