@@ -28,6 +28,7 @@ interface ScheduleContextType {
   deleteTask: (id: string) => Promise<void>;
   toggleTaskCompletion: (id: string) => Promise<void>;
   toggleTaskMissed: (id: string) => Promise<void>;
+  restoreMissedTask: (id: string) => Promise<void>;
   scheduleTask: (taskId: string, date: string, startTime: string, durationMinutes?: number) => Promise<void>;
   unscheduleTask: (taskId: string) => Promise<void>;
   addHabit: (habit: Omit<Habit, "id" | "createdAt" | "streak" | "completedDates">) => Promise<void>;
@@ -828,6 +829,32 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Restore task from missed status: remove from schedule timeline and move to active backlog
+  const restoreMissedTask = async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    await updateTask(id, {
+      completed: false,
+      status: "pending",
+      scheduledDate: undefined,
+      startTime: undefined,
+      endTime: undefined,
+      completedAt: undefined,
+    });
+
+    // If linked to a habit, unmark missed date from habit as well
+    if (task.habitId) {
+      const taskDate = task.scheduledDate || selectedDate;
+      const linkedHabit = habits.find((h) => h.id === task.habitId);
+      if (linkedHabit && linkedHabit.missedDates?.includes(taskDate)) {
+        await updateHabit(task.habitId, {
+          missedDates: linkedHabit.missedDates.filter((d) => d !== taskDate),
+        });
+      }
+    }
+  };
+
   const scheduleTask = async (
     taskId: string,
     date: string,
@@ -957,6 +984,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         deleteTask,
         toggleTaskCompletion,
         toggleTaskMissed,
+        restoreMissedTask,
         scheduleTask,
         unscheduleTask,
         addHabit,

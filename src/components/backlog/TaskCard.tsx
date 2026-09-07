@@ -18,7 +18,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardProps) {
-  const { toggleTaskCompletion, toggleTaskMissed, deleteTask, scheduleTask, selectedDate, categories } = useSchedule();
+  const { toggleTaskCompletion, toggleTaskMissed, restoreMissedTask, deleteTask, scheduleTask, selectedDate, categories } = useSchedule();
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState(selectedDate);
   const [scheduleTime, setScheduleTime] = useState("09:00");
@@ -176,17 +176,17 @@ export function TaskCard({ task, onEdit, showScheduleAction = true }: TaskCardPr
 
           {/* Action icons */}
           <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-            {/* Restore from Missed button */}
+            {/* Restore from Missed button: clears schedule and moves to backlog */}
             {isMissed && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleTaskMissed(task.id);
+                  restoreMissedTask(task.id);
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg cursor-pointer transition-all active:scale-95 shadow-2xs"
-                title="Restore / unmark missed status"
+                title="Restore task to backlog and remove from day schedule"
               >
                 <RotateCcw size={13} />
                 <span>Restore</span>
