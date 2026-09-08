@@ -122,8 +122,13 @@ function ScheduleApp() {
       return;
     }
 
-    // 4. Dropped on the general timeline droppable area
-    if (over.id === "timeline-droppable" || overData?.type === "timeline-general") {
+    // 4. Dropped on the general timeline droppable area or on top of a scheduled task
+    const isTimelineTarget =
+      over.id === "timeline-droppable" ||
+      overData?.type === "timeline-general" ||
+      overId.startsWith("scheduled-");
+
+    if (isTimelineTarget) {
       let calculatedStart = taskData.startTime || "09:00";
       
       const scrollContainer = document.querySelector('[data-timeline-scroll="true"]') as HTMLElement | null;
@@ -185,7 +190,13 @@ function ScheduleApp() {
         // 1. Pointer within check (exact cursor/finger position)
         const pointerCollisions = pointerWithin(args);
         if (pointerCollisions.length > 0) {
-          const timelineColl = pointerCollisions.find((c) => c.id === "timeline-droppable" || String(c.id).startsWith("week-day-") || c.id === "backlog-droppable");
+          const timelineColl = pointerCollisions.find(
+            (c) =>
+              c.id === "timeline-droppable" ||
+              String(c.id).startsWith("week-day-") ||
+              c.id === "backlog-droppable" ||
+              String(c.id).startsWith("scheduled-")
+          );
           if (timelineColl) {
             return [timelineColl];
           }
@@ -195,7 +206,13 @@ function ScheduleApp() {
         // 2. Intersection detection (drag preview bounding box overlap)
         const rectCollisions = rectIntersection(args);
         if (rectCollisions.length > 0) {
-          const timelineColl = rectCollisions.find((c) => c.id === "timeline-droppable" || String(c.id).startsWith("week-day-") || c.id === "backlog-droppable");
+          const timelineColl = rectCollisions.find(
+            (c) =>
+              c.id === "timeline-droppable" ||
+              String(c.id).startsWith("week-day-") ||
+              c.id === "backlog-droppable" ||
+              String(c.id).startsWith("scheduled-")
+          );
           if (timelineColl) {
             return [timelineColl];
           }
