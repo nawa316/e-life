@@ -13,6 +13,7 @@ import {
   useSensor,
   useSensors,
   pointerWithin,
+  rectIntersection,
   closestCenter,
 } from "@dnd-kit/core";
 import { ScheduleProvider, useSchedule } from "@/lib/store";
@@ -187,18 +188,27 @@ function ScheduleApp() {
     <DndContext
       sensors={sensors}
       collisionDetection={(args) => {
-        // 1. Pointer within check
+        // 1. Pointer within check (exact cursor/finger position)
         const pointerCollisions = pointerWithin(args);
         if (pointerCollisions.length > 0) {
-          // If we hit timeline-droppable or week-day, return immediately
-          const timelineColl = pointerCollisions.find((c) => c.id === "timeline-droppable" || String(c.id).startsWith("week-day-"));
+          const timelineColl = pointerCollisions.find((c) => c.id === "timeline-droppable" || String(c.id).startsWith("week-day-") || c.id === "backlog-droppable");
           if (timelineColl) {
             return [timelineColl];
           }
           return pointerCollisions;
         }
 
-        // 2. Fall back to closestCenter
+        // 2. Intersection detection (drag preview bounding box overlap)
+        const rectCollisions = rectIntersection(args);
+        if (rectCollisions.length > 0) {
+          const timelineColl = rectCollisions.find((c) => c.id === "timeline-droppable" || String(c.id).startsWith("week-day-") || c.id === "backlog-droppable");
+          if (timelineColl) {
+            return [timelineColl];
+          }
+          return rectCollisions;
+        }
+
+        // 3. Fall back to closestCenter
         const centerCollisions = closestCenter(args);
         if (centerCollisions.length > 0) {
           return centerCollisions;
