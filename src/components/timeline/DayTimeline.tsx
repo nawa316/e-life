@@ -12,55 +12,6 @@ interface DayTimelineProps {
   endHour?: number;
 }
 
-// Sub-component for each individual hour drop slot
-function TimelineHourSlot({
-  hour,
-  startHour,
-  pixelsPerMinute,
-  isHalfHour = false,
-}: {
-  hour: number;
-  startHour: number;
-  pixelsPerMinute: number;
-  isHalfHour?: boolean;
-}) {
-  const slotMinutes = hour * 60 + (isHalfHour ? 30 : 0);
-  const timeStr = minutesToTime(slotMinutes);
-  const slotId = `slot-${timeStr}`;
-
-  const { isOver, setNodeRef } = useDroppable({
-    id: slotId,
-    data: {
-      type: "timeline-slot",
-      time: timeStr,
-    },
-  });
-
-  const topOffset = (slotMinutes - startHour * 60) * pixelsPerMinute;
-  const height = 30 * pixelsPerMinute;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        top: `${topOffset}px`,
-        height: `${height}px`,
-      }}
-      className={`absolute left-0 right-0 transition-all duration-100 pointer-events-auto rounded-lg flex items-center justify-center ${
-        isOver
-          ? "bg-blue-500/20 border-2 border-dashed border-blue-400 z-30 shadow-lg shadow-blue-500/10"
-          : "hover:bg-zinc-800/20 z-0"
-      }`}
-      title={`Drop to schedule at ${timeStr}`}
-    >
-      {isOver && (
-        <span className="text-xs font-bold text-blue-300 bg-blue-950/90 px-3 py-1 rounded-full border border-blue-500/40 shadow-sm pointer-events-none animate-in fade-in zoom-in-95 duration-100">
-          Drop to schedule at {timeStr}
-        </span>
-      )}
-    </div>
-  );
-}
 
 export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
   const { selectedDate, setSelectedDate, tasks } = useSchedule();
@@ -216,23 +167,6 @@ export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
           className="relative min-h-full"
           style={{ height: `${totalHours * 60 * PIXELS_PER_MINUTE}px` }}
         >
-          {/* Individual Droppable Half-Hour Time Slots */}
-          {hours.map((hour) => (
-            <React.Fragment key={`slots-${hour}`}>
-              <TimelineHourSlot
-                hour={hour}
-                startHour={startHour}
-                pixelsPerMinute={PIXELS_PER_MINUTE}
-                isHalfHour={false}
-              />
-              <TimelineHourSlot
-                hour={hour}
-                startHour={startHour}
-                pixelsPerMinute={PIXELS_PER_MINUTE}
-                isHalfHour={true}
-              />
-            </React.Fragment>
-          ))}
 
           {/* Hour grid lines and labels */}
           {hours.map((hour) => {

@@ -130,11 +130,13 @@ function ScheduleApp() {
     if (over.id === "timeline-droppable" || overData?.type === "timeline-general") {
       let calculatedStart = taskData.startTime || "09:00";
       
-      // Calculate target time based on drop pointer Y offset inside the timeline
-      if (over.rect) {
+      const scrollContainer = document.querySelector('[data-timeline-scroll="true"]') as HTMLElement | null;
+      const timelineBox = scrollContainer?.querySelector('.relative.min-h-full') as HTMLElement | null;
+
+      if (scrollContainer && timelineBox) {
+        const containerRect = scrollContainer.getBoundingClientRect();
         let dropY: number | null = null;
         
-        // 1. Try translated client coordinates if available
         if (event.activatorEvent) {
           const actEvent = event.activatorEvent as any;
           const initialY = typeof actEvent.clientY === "number" 
@@ -147,13 +149,9 @@ function ScheduleApp() {
           }
         }
         
-        const finalDropY = dropY ?? (over.rect.top + over.rect.height / 2);
-        
-        // Include scrollTop of the timeline container so scrolled positions map to the true hour
-        const scrollContainer = document.querySelector('[data-timeline-scroll="true"]') as HTMLElement | null;
-        const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-        
-        const relativeY = Math.max(0, finalDropY - over.rect.top + scrollTop);
+        const finalDropY = dropY ?? (containerRect.top + containerRect.height / 2);
+        const scrollTop = scrollContainer.scrollTop;
+        const relativeY = Math.max(0, finalDropY - containerRect.top + scrollTop);
         const PIXELS_PER_MINUTE = 1.35;
         const startHour = 0;
         const totalMinutesFromStart = Math.round((relativeY / PIXELS_PER_MINUTE) / 15) * 15;
@@ -189,30 +187,20 @@ function ScheduleApp() {
     <DndContext
       sensors={sensors}
       collisionDetection={(args) => {
-        // 1. First check pointer collisions directly
+        // 1. Pointer within check
         const pointerCollisions = pointerWithin(args);
         if (pointerCollisions.length > 0) {
-          // If we have specific slots/days among pointer collisions, prioritize them over container droppables
-          const specificCollision = pointerCollisions.find((c) => {
-            const id = String(c.id);
-            return id.startsWith("slot-") || id.startsWith("week-day-");
-          });
-          if (specificCollision) {
-            return [specificCollision];
+          // If we hit timeline-droppable or week-day, return immediately
+          const timelineColl = pointerCollisions.find((c) => c.id === "timeline-droppable" || String(c.id).startsWith("week-day-"));
+          if (timelineColl) {
+            return [timelineColl];
           }
           return pointerCollisions;
         }
 
-        // 2. Fall back to closestCenter for forgiving drag targeting
+        // 2. Fall back to closestCenter
         const centerCollisions = closestCenter(args);
         if (centerCollisions.length > 0) {
-          const specificCollision = centerCollisions.find((c) => {
-            const id = String(c.id);
-            return id.startsWith("slot-") || id.startsWith("week-day-");
-          });
-          if (specificCollision) {
-            return [specificCollision];
-          }
           return centerCollisions;
         }
 
