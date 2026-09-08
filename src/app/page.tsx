@@ -135,7 +135,7 @@ function ScheduleApp() {
       const timelineBox = scrollContainer?.querySelector('.relative.min-h-full') as HTMLElement | null;
 
       if (scrollContainer && timelineBox) {
-        const containerRect = scrollContainer.getBoundingClientRect();
+        const boxRect = timelineBox.getBoundingClientRect();
         let dropY: number | null = null;
         
         if (event.activatorEvent) {
@@ -150,9 +150,8 @@ function ScheduleApp() {
           }
         }
         
-        const finalDropY = dropY ?? (containerRect.top + containerRect.height / 2);
-        const scrollTop = scrollContainer.scrollTop;
-        const relativeY = Math.max(0, finalDropY - containerRect.top + scrollTop);
+        const finalDropY = dropY ?? (boxRect.top + boxRect.height / 2);
+        const relativeY = Math.max(0, finalDropY - boxRect.top);
         const PIXELS_PER_MINUTE = 1.35;
         const startHour = 0;
         const totalMinutesFromStart = Math.round((relativeY / PIXELS_PER_MINUTE) / 15) * 15;
