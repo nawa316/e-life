@@ -148,7 +148,12 @@ function ScheduleApp() {
         }
         
         const finalDropY = dropY ?? (over.rect.top + over.rect.height / 2);
-        const relativeY = Math.max(0, finalDropY - over.rect.top);
+        
+        // Include scrollTop of the timeline container so scrolled positions map to the true hour
+        const scrollContainer = document.querySelector('[data-timeline-scroll="true"]') as HTMLElement | null;
+        const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+        
+        const relativeY = Math.max(0, finalDropY - over.rect.top + scrollTop);
         const PIXELS_PER_MINUTE = 1.35;
         const startHour = 0;
         const totalMinutesFromStart = Math.round((relativeY / PIXELS_PER_MINUTE) / 15) * 15;

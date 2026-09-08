@@ -206,6 +206,7 @@ export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
           setGeneralDroppableRef(el);
           (timelineContainerRef as any).current = el;
         }}
+        data-timeline-scroll="true"
         className={`flex-1 overflow-y-auto relative p-3 sm:p-4 transition-colors ${
           isGeneralOver ? "bg-blue-950/10" : ""
         }`}
