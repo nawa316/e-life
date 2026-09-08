@@ -172,26 +172,45 @@ export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
           style={{ height: `${totalHours * 60 * PIXELS_PER_MINUTE}px` }}
         >
 
-          {/* Hour grid lines and labels */}
+          {/* Hour grid lines and droppable slot zones */}
           {hours.map((hour) => {
             const hourOffset = (hour - startHour) * 60 * PIXELS_PER_MINUTE;
             return (
-              <div
-                key={hour}
-                className="absolute left-0 right-0 flex items-start pointer-events-none"
-                style={{ top: `${hourOffset}px` }}
-              >
-                <div className="w-11 sm:w-12 text-right pr-2 sm:pr-3 -mt-2 text-[11px] sm:text-xs font-mono font-medium text-zinc-500 select-none">
-                  {String(hour).padStart(2, "0")}:00
+              <React.Fragment key={hour}>
+                {/* 4 x 15-minute droppable slots per hour */}
+                {[0, 15, 30, 45].map((minute) => {
+                  const timeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+                  const slotTop = ((hour - startHour) * 60 + minute) * PIXELS_PER_MINUTE;
+                  const slotHeight = 15 * PIXELS_PER_MINUTE;
+                  return (
+                    <TimelineSlot
+                      key={timeStr}
+                      time={timeStr}
+                      top={slotTop}
+                      height={slotHeight}
+                      droppableIdPrefix={droppableId}
+                      selectedDate={selectedDate}
+                    />
+                  );
+                })}
+
+                {/* Hour grid line and label (visual overlay) */}
+                <div
+                  className="absolute left-0 right-0 flex items-start pointer-events-none z-0"
+                  style={{ top: `${hourOffset}px` }}
+                >
+                  <div className="w-11 sm:w-12 text-right pr-2 sm:pr-3 -mt-2 text-[11px] sm:text-xs font-mono font-medium text-zinc-500 select-none">
+                    {String(hour).padStart(2, "0")}:00
+                  </div>
+                  <div className="flex-1 border-t border-zinc-800/60 relative">
+                    {/* Half-hour dashed line */}
+                    <div
+                      className="absolute left-0 right-0 border-t border-dashed border-zinc-850"
+                      style={{ top: `${30 * PIXELS_PER_MINUTE}px` }}
+                    />
+                  </div>
                 </div>
-                <div className="flex-1 border-t border-zinc-800/60 relative">
-                  {/* Half-hour dashed line */}
-                  <div
-                    className="absolute left-0 right-0 border-t border-dashed border-zinc-850"
-                    style={{ top: `${30 * PIXELS_PER_MINUTE}px` }}
-                  />
-                </div>
-              </div>
+              </React.Fragment>
             );
           })}
 
@@ -220,6 +239,50 @@ export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TimelineSlot({
+  time,
+  top,
+  height,
+  droppableIdPrefix,
+  selectedDate,
+}: {
+  time: string;
+  top: number;
+  height: number;
+  droppableIdPrefix: string;
+  selectedDate: string;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `slot-${droppableIdPrefix}-${time}`,
+    data: {
+      type: "timeline-slot",
+      time,
+      date: selectedDate,
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`absolute left-12 right-0 transition-colors z-1 rounded-md ${
+        isOver
+          ? "bg-blue-500/25 border-y-2 border-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.35)]"
+          : "hover:bg-zinc-800/20"
+      }`}
+      style={{
+        top: `${top}px`,
+        height: `${height}px`,
+      }}
+    >
+      {isOver && (
+        <div className="absolute left-2 top-0.5 z-20 flex items-center gap-1 bg-blue-600 text-white font-mono text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md pointer-events-none">
+          <span>{time}</span>
+        </div>
+      )}
     </div>
   );
 }

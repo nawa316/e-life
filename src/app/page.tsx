@@ -93,9 +93,14 @@ function ScheduleApp() {
       return;
     }
 
-    // 2. Dropped on a specific half-hour / hour slot
+    // 2. Dropped on a specific half-hour / 15-minute slot
     const isSlot = overData?.type === "timeline-slot" || overId.startsWith("slot-");
-    const slotTime = overData?.time || (overId.startsWith("slot-") ? overId.replace("slot-", "") : null);
+    let slotTime = overData?.time as string | undefined;
+    if (!slotTime && overId.startsWith("slot-")) {
+      const parts = overId.split("-");
+      // slot-timeline-droppable-:r0:-09:00 -> last part is time
+      slotTime = parts.slice(-1)[0];
+    }
 
     if (isSlot && slotTime) {
       scheduleTask(
@@ -131,10 +136,16 @@ function ScheduleApp() {
     if (isTimelineTarget) {
       let calculatedStart = taskData.startTime || "09:00";
       
-      // Resolve the specific timeline being dropped onto (desktop & mobile timelines are both mounted)
-      const scrollContainer = Array.from(
+      // Resolve the specific active visible timeline being dropped onto
+      const allContainers = Array.from(
         document.querySelectorAll<HTMLElement>('[data-timeline-scroll="true"]')
-      ).find((el) => el.getAttribute("data-timeline-drop-id") === overId) as HTMLElement | null;
+      );
+      const scrollContainer =
+        allContainers.find((el) => el.getAttribute("data-timeline-drop-id") === overId) ||
+        allContainers.find((el) => el.offsetParent !== null) ||
+        allContainers[0] ||
+        null;
+
       const timelineBox = scrollContainer?.querySelector('.relative.min-h-full') as HTMLElement | null;
 
       if (scrollContainer && timelineBox) {
@@ -193,15 +204,20 @@ function ScheduleApp() {
         // 1. Pointer within check (exact cursor/finger position)
         const pointerCollisions = pointerWithin(args);
         if (pointerCollisions.length > 0) {
-          const timelineColl = pointerCollisions.find(
+          const slotColl = pointerCollisions.find(
+            (c) => String(c.id).startsWith("slot-") || c.data?.droppableContainer?.data?.current?.type === "timeline-slot"
+          );
+          if (slotColl) return [slotColl];
+
+          const priorityColl = pointerCollisions.find(
             (c) =>
               String(c.id).startsWith("timeline-droppable") ||
               String(c.id).startsWith("week-day-") ||
               c.id === "backlog-droppable" ||
               String(c.id).startsWith("scheduled-")
           );
-          if (timelineColl) {
-            return [timelineColl];
+          if (priorityColl) {
+            return [priorityColl];
           }
           return pointerCollisions;
         }
@@ -209,15 +225,20 @@ function ScheduleApp() {
         // 2. Intersection detection (drag preview bounding box overlap)
         const rectCollisions = rectIntersection(args);
         if (rectCollisions.length > 0) {
-          const timelineColl = rectCollisions.find(
+          const slotColl = rectCollisions.find(
+            (c) => String(c.id).startsWith("slot-") || c.data?.droppableContainer?.data?.current?.type === "timeline-slot"
+          );
+          if (slotColl) return [slotColl];
+
+          const priorityColl = rectCollisions.find(
             (c) =>
               String(c.id).startsWith("timeline-droppable") ||
               String(c.id).startsWith("week-day-") ||
               c.id === "backlog-droppable" ||
               String(c.id).startsWith("scheduled-")
           );
-          if (timelineColl) {
-            return [timelineColl];
+          if (priorityColl) {
+            return [priorityColl];
           }
           return rectCollisions;
         }
@@ -225,6 +246,10 @@ function ScheduleApp() {
         // 3. Fall back to closestCenter
         const centerCollisions = closestCenter(args);
         if (centerCollisions.length > 0) {
+          const slotColl = centerCollisions.find(
+            (c) => String(c.id).startsWith("slot-") || c.data?.droppableContainer?.data?.current?.type === "timeline-slot"
+          );
+          if (slotColl) return [slotColl];
           return centerCollisions;
         }
 
