@@ -62,8 +62,9 @@ function TimelineHourSlot({
   );
 }
 
-export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
+export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
   const { selectedDate, setSelectedDate, tasks } = useSchedule();
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState<string>("");
 
@@ -94,6 +95,17 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
     updateTime();
     const interval = setInterval(updateTime, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Auto-scroll to current time or standard morning on initial load
+  useEffect(() => {
+    if (timelineContainerRef.current) {
+      const now = new Date();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      const targetScrollMin = Math.max(0, currentMin - 90); // 1.5h before current time
+      const scrollPos = targetScrollMin * PIXELS_PER_MINUTE;
+      timelineContainerRef.current.scrollTop = scrollPos;
+    }
   }, []);
 
   // Quick date shifts
@@ -190,7 +202,10 @@ export function DayTimeline({ startHour = 6, endHour = 24 }: DayTimelineProps) {
 
       {/* Interactive Timeline Body with Droppable Slots */}
       <div
-        ref={setGeneralDroppableRef}
+        ref={(el) => {
+          setGeneralDroppableRef(el);
+          (timelineContainerRef as any).current = el;
+        }}
         className={`flex-1 overflow-y-auto relative p-3 sm:p-4 transition-colors ${
           isGeneralOver ? "bg-blue-950/10" : ""
         }`}

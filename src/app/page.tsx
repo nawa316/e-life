@@ -133,23 +133,26 @@ function ScheduleApp() {
       // Calculate target time based on drop pointer Y offset inside the timeline
       if (over.rect) {
         let dropY: number | null = null;
-        const actEvent = event.activatorEvent as any;
-        if (actEvent) {
-          if (typeof actEvent.clientY === "number") {
-            dropY = actEvent.clientY;
-          } else if (actEvent.touches?.[0]?.clientY !== undefined) {
-            dropY = actEvent.touches[0].clientY;
-          } else if (actEvent.changedTouches?.[0]?.clientY !== undefined) {
-            dropY = actEvent.changedTouches[0].clientY;
+        
+        // 1. Try translated client coordinates if available
+        if (event.activatorEvent) {
+          const actEvent = event.activatorEvent as any;
+          const initialY = typeof actEvent.clientY === "number" 
+            ? actEvent.clientY 
+            : (actEvent.touches?.[0]?.clientY ?? actEvent.changedTouches?.[0]?.clientY);
+          
+          if (typeof initialY === "number") {
+            const translationY = event.delta?.y ?? 0;
+            dropY = initialY + translationY;
           }
         }
         
         const finalDropY = dropY ?? (over.rect.top + over.rect.height / 2);
         const relativeY = Math.max(0, finalDropY - over.rect.top);
         const PIXELS_PER_MINUTE = 1.35;
-        const startHour = 6;
+        const startHour = 0;
         const totalMinutesFromStart = Math.round((relativeY / PIXELS_PER_MINUTE) / 15) * 15;
-        const slotMinutes = Math.max(6 * 60, Math.min(23 * 60 + 45, startHour * 60 + totalMinutesFromStart));
+        const slotMinutes = Math.max(0, Math.min(23 * 60 + 45, startHour * 60 + totalMinutesFromStart));
         const hh = String(Math.floor(slotMinutes / 60)).padStart(2, "0");
         const mm = String(slotMinutes % 60).padStart(2, "0");
         calculatedStart = `${hh}:${mm}`;
@@ -361,7 +364,7 @@ function ScheduleApp() {
                 {/* Center Column: Interactive Day or Week Timeline */}
                 <div className={`${getCenterSpanClass()} h-[760px] transition-all duration-300`}>
                   {timelineView === "day" ? (
-                    <DayTimeline startHour={6} endHour={23} />
+                    <DayTimeline startHour={0} endHour={24} />
                   ) : (
                     <WeeklyTimeline onSelectDay={handleSelectDayFromWeek} />
                   )}
@@ -382,7 +385,7 @@ function ScheduleApp() {
                 {mobileTab === "planner" && (
                   <div className="h-[calc(100vh-140px)] min-h-[480px]">
                     {timelineView === "day" ? (
-                      <DayTimeline startHour={6} endHour={23} />
+                      <DayTimeline startHour={0} endHour={24} />
                     ) : (
                       <WeeklyTimeline onSelectDay={handleSelectDayFromWeek} />
                     )}
