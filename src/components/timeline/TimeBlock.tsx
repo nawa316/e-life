@@ -90,7 +90,7 @@ export function TimeBlock({ task, pixelsPerMinute, timelineStartHour }: TimeBloc
             : isMissed
             ? "bg-red-950/40 border-red-500/60 text-red-200 shadow-md shadow-red-950/30 ring-1 ring-red-500/30"
             : "bg-zinc-900/95 hover:bg-zinc-850/95 border-zinc-800 hover:border-zinc-700 shadow-md hover:shadow-lg"
-        } ${isDragging ? "ring-2 ring-blue-500 scale-[1.02] z-50 shadow-2xl" : ""}`}
+        } ${isDragging ? "ring-2 ring-blue-500 scale-[1.02] z-50 shadow-2xl pointer-events-none opacity-40" : ""}`}
       >
         {/* Accent indicator pillar */}
         <div

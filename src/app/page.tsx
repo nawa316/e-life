@@ -53,7 +53,7 @@ function ScheduleApp() {
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 5,
       },
@@ -62,6 +62,11 @@ function ScheduleApp() {
       activationConstraint: {
         delay: 150,
         tolerance: 5,
+      },
+    }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
       },
     })
   );
@@ -123,11 +128,37 @@ function ScheduleApp() {
 
     // 4. Dropped on the general timeline droppable area
     if (over.id === "timeline-droppable" || overData?.type === "timeline-general") {
-      const currentStart = taskData.startTime || "09:00";
+      let calculatedStart = taskData.startTime || "09:00";
+      
+      // Calculate target time based on drop pointer Y offset inside the timeline
+      if (over.rect) {
+        let dropY: number | null = null;
+        const actEvent = event.activatorEvent as any;
+        if (actEvent) {
+          if (typeof actEvent.clientY === "number") {
+            dropY = actEvent.clientY;
+          } else if (actEvent.touches?.[0]?.clientY !== undefined) {
+            dropY = actEvent.touches[0].clientY;
+          } else if (actEvent.changedTouches?.[0]?.clientY !== undefined) {
+            dropY = actEvent.changedTouches[0].clientY;
+          }
+        }
+        
+        const finalDropY = dropY ?? (over.rect.top + over.rect.height / 2);
+        const relativeY = Math.max(0, finalDropY - over.rect.top);
+        const PIXELS_PER_MINUTE = 1.35;
+        const startHour = 6;
+        const totalMinutesFromStart = Math.round((relativeY / PIXELS_PER_MINUTE) / 15) * 15;
+        const slotMinutes = Math.max(6 * 60, Math.min(23 * 60 + 45, startHour * 60 + totalMinutesFromStart));
+        const hh = String(Math.floor(slotMinutes / 60)).padStart(2, "0");
+        const mm = String(slotMinutes % 60).padStart(2, "0");
+        calculatedStart = `${hh}:${mm}`;
+      }
+
       scheduleTask(
         taskData.id,
         selectedDate,
-        currentStart,
+        calculatedStart,
         taskData.estimatedMinutes || 30
       );
     }
