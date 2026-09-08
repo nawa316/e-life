@@ -568,15 +568,15 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         updated_at: new Date().toISOString(),
         description: rawDesc || null,
       };
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.category !== undefined) dbUpdates.category = updates.category;
-      if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
-      if (updates.estimatedMinutes !== undefined) dbUpdates.estimated_minutes = updates.estimatedMinutes;
-      if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
-      if (updates.completedAt !== undefined) dbUpdates.completed_at = updates.completedAt;
-      if (updates.scheduledDate !== undefined) dbUpdates.scheduled_date = updates.scheduledDate;
-      if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
-      if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
+      if ("title" in updates) dbUpdates.title = updates.title;
+      if ("category" in updates) dbUpdates.category = updates.category;
+      if ("priority" in updates) dbUpdates.priority = updates.priority;
+      if ("estimatedMinutes" in updates) dbUpdates.estimated_minutes = updates.estimatedMinutes;
+      if ("completed" in updates) dbUpdates.completed = updates.completed;
+      if ("completedAt" in updates) dbUpdates.completed_at = updates.completedAt ?? null;
+      if ("scheduledDate" in updates) dbUpdates.scheduled_date = updates.scheduledDate ?? null;
+      if ("startTime" in updates) dbUpdates.start_time = updates.startTime ?? null;
+      if ("endTime" in updates) dbUpdates.end_time = updates.endTime ?? null;
 
       try {
         const { error } = await supabase.from("tasks").update(dbUpdates).eq("id", id).eq("user_id", user.id);
@@ -584,15 +584,15 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           await supabase.from("tasks").upsert({
             id: currentTask.id,
             user_id: user.id,
-            title: updates.title ?? currentTask.title,
+            title: "title" in updates ? updates.title : currentTask.title,
             description: rawDesc || null,
-            category: updates.category ?? currentTask.category,
-            priority: updates.priority ?? currentTask.priority,
-            estimated_minutes: updates.estimatedMinutes ?? currentTask.estimatedMinutes,
-            completed: updates.completed ?? currentTask.completed,
-            scheduled_date: updates.scheduledDate ?? currentTask.scheduledDate ?? null,
-            start_time: updates.startTime ?? currentTask.startTime ?? null,
-            end_time: updates.endTime ?? currentTask.endTime ?? null,
+            category: "category" in updates ? updates.category : currentTask.category,
+            priority: "priority" in updates ? updates.priority : currentTask.priority,
+            estimated_minutes: "estimatedMinutes" in updates ? updates.estimatedMinutes : currentTask.estimatedMinutes,
+            completed: "completed" in updates ? updates.completed : currentTask.completed,
+            scheduled_date: "scheduledDate" in updates ? (updates.scheduledDate ?? null) : (currentTask.scheduledDate ?? null),
+            start_time: "startTime" in updates ? (updates.startTime ?? null) : (currentTask.startTime ?? null),
+            end_time: "endTime" in updates ? (updates.endTime ?? null) : (currentTask.endTime ?? null),
             is_habit_instance: currentTask.isHabitInstance || false,
             habit_id: currentTask.habitId || null,
           });
