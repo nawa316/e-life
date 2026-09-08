@@ -54,7 +54,7 @@ function ScheduleApp() {
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, {
+    useSensor(PointerSensor, {
       activationConstraint: {
         distance: 5,
       },
@@ -63,11 +63,6 @@ function ScheduleApp() {
       activationConstraint: {
         delay: 150,
         tolerance: 5,
-      },
-    }),
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
       },
     })
   );
