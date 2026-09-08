@@ -109,7 +109,7 @@ function ScheduleApp() {
 
     // 3. Dropped on a week day column
     const isWeekDay = overData?.type === "week-day" || overId.startsWith("week-day-");
-    const weekDate = overData?.date || (overId.startsWith("week-day-") ? overId.replace("week-day-", "") : null);
+    const weekDate = overData?.date || overId.match(/\d{4}-\d{2}-\d{2}/)?.[0] || null;
 
     if (isWeekDay && weekDate) {
       const currentStart = taskData.startTime || "09:00";
@@ -124,14 +124,17 @@ function ScheduleApp() {
 
     // 4. Dropped on the general timeline droppable area or on top of a scheduled task
     const isTimelineTarget =
-      over.id === "timeline-droppable" ||
+      overId.startsWith("timeline-droppable") ||
       overData?.type === "timeline-general" ||
       overId.startsWith("scheduled-");
 
     if (isTimelineTarget) {
       let calculatedStart = taskData.startTime || "09:00";
       
-      const scrollContainer = document.querySelector('[data-timeline-scroll="true"]') as HTMLElement | null;
+      // Resolve the specific timeline being dropped onto (desktop & mobile timelines are both mounted)
+      const scrollContainer = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-timeline-scroll="true"]')
+      ).find((el) => el.getAttribute("data-timeline-drop-id") === overId) as HTMLElement | null;
       const timelineBox = scrollContainer?.querySelector('.relative.min-h-full') as HTMLElement | null;
 
       if (scrollContainer && timelineBox) {
@@ -192,7 +195,7 @@ function ScheduleApp() {
         if (pointerCollisions.length > 0) {
           const timelineColl = pointerCollisions.find(
             (c) =>
-              c.id === "timeline-droppable" ||
+              String(c.id).startsWith("timeline-droppable") ||
               String(c.id).startsWith("week-day-") ||
               c.id === "backlog-droppable" ||
               String(c.id).startsWith("scheduled-")
@@ -208,7 +211,7 @@ function ScheduleApp() {
         if (rectCollisions.length > 0) {
           const timelineColl = rectCollisions.find(
             (c) =>
-              c.id === "timeline-droppable" ||
+              String(c.id).startsWith("timeline-droppable") ||
               String(c.id).startsWith("week-day-") ||
               c.id === "backlog-droppable" ||
               String(c.id).startsWith("scheduled-")

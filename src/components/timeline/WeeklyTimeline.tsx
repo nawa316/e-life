@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 import { useSchedule } from "@/lib/store";
 import { timeToMinutes, formatMinutes } from "@/lib/utils";
 import { Task } from "@/lib/types";
@@ -18,18 +18,20 @@ function WeekDayColumn({
   tasks,
   categories,
   onSelectDay,
+  dropPrefix,
 }: {
   day: { dateStr: string; dayName: string; dayNumber: number; isSelected: boolean };
   tasks: Task[];
   categories: any[];
   onSelectDay?: (dateStr: string) => void;
+  dropPrefix: string;
 }) {
   const { setSelectedDate } = useSchedule();
   const dayTasks = tasks.filter((t) => t.scheduledDate === day.dateStr);
   const totalMins = dayTasks.reduce((acc, t) => acc + (t.estimatedMinutes || 0), 0);
 
   const { isOver, setNodeRef } = useDroppable({
-    id: `week-day-${day.dateStr}`,
+    id: `week-day-${dropPrefix}-${day.dateStr}`,
     data: {
       type: "week-day",
       date: day.dateStr,
@@ -139,6 +141,7 @@ function WeekDayColumn({
 
 export function WeeklyTimeline({ onSelectDay }: WeeklyTimelineProps) {
   const { selectedDate, setSelectedDate, tasks, categories } = useSchedule();
+  const dropPrefix = useId();
 
   // Calculate the 7 days of the current week (Mon-Sun)
   const [y, m, d] = selectedDate.split("-").map(Number);
@@ -215,6 +218,7 @@ export function WeeklyTimeline({ onSelectDay }: WeeklyTimelineProps) {
             tasks={tasks}
             categories={categories}
             onSelectDay={onSelectDay}
+            dropPrefix={dropPrefix}
           />
         ))}
       </div>

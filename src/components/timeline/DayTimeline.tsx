@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useId } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useSchedule } from "@/lib/store";
 import { TimeBlock } from "./TimeBlock";
@@ -19,13 +19,16 @@ export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState<string>("");
 
+  // Unique droppable id per mounted timeline so the desktop & mobile instances don't collide
+  const droppableId = `timeline-droppable-${useId()}`;
+
   const PIXELS_PER_MINUTE = 1.35; // Height scaling factor
   const totalHours = endHour - startHour;
   const hours = Array.from({ length: totalHours }, (_, i) => startHour + i);
 
   // General timeline container droppable fallback
   const { isOver: isGeneralOver, setNodeRef: setGeneralDroppableRef } = useDroppable({
-    id: "timeline-droppable",
+    id: droppableId,
     data: {
       type: "timeline-general",
       date: selectedDate,
@@ -158,6 +161,7 @@ export function DayTimeline({ startHour = 0, endHour = 24 }: DayTimelineProps) {
           (timelineContainerRef as any).current = el;
         }}
         data-timeline-scroll="true"
+        data-timeline-drop-id={droppableId}
         className={`flex-1 overflow-y-auto relative p-3 sm:p-4 transition-colors ${
           isGeneralOver ? "bg-blue-950/10" : ""
         }`}
