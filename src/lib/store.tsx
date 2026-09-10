@@ -914,9 +914,10 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const addHabit = async (
     habitData: Omit<Habit, "id" | "createdAt" | "streak" | "completedDates">
   ) => {
+    const habitId = `habit-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const newHabit: Habit = {
       ...habitData,
-      id: `habit-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: habitId,
       streak: 0,
       completedDates: [],
       createdAt: new Date().toISOString(),
@@ -941,6 +942,25 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         },
       ]);
     }
+
+    // Automatically place the habit onto today's timeline schedule once in the first set
+    const startTime = newHabit.preferredTime || "08:00";
+    const endTime = addMinutesToTime(startTime, newHabit.targetMinutes || 30);
+    const targetDate = selectedDate || getTodayDateString();
+
+    await addTask({
+      title: newHabit.title,
+      description: newHabit.description || "Recurring habit session",
+      category: newHabit.category,
+      priority: "medium",
+      estimatedMinutes: newHabit.targetMinutes || 30,
+      completed: false,
+      scheduledDate: targetDate,
+      startTime,
+      endTime,
+      isHabitInstance: true,
+      habitId: newHabit.id,
+    });
   };
 
   const deleteHabit = async (id: string) => {
