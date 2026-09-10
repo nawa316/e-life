@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import type { User, Session } from "@supabase/supabase-js";
 import { Category, Habit, Task } from "./types";
 import { initialCategories, initialHabits, initialTasks } from "./mockData";
-import { getTodayDateString, addMinutesToTime } from "./utils";
+import { getTodayDateString, addMinutesToTime, doesHabitApplyToDate, getDateRange, formatDateStr } from "./utils";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import confetti from "canvas-confetti";
 
@@ -125,17 +125,34 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       if (habitsRes.data && habitsRes.data.length > 0) {
         loadedHabits = habitsRes.data.map((h) => {
           let resolvedMissedDates: string[] = h.missed_dates || [];
-          // Fallback if missed_dates column didn't exist in Supabase yet but was encoded in description JSON
-          if ((!resolvedMissedDates || resolvedMissedDates.length === 0) && h.description && h.description.includes("__MISSED_DATES__:")) {
-            try {
-              const match = h.description.match(/__MISSED_DATES__:(\[[^\]]*\])/);
-              if (match && match[1]) {
-                resolvedMissedDates = JSON.parse(match[1]);
-              }
-            } catch (e) {}
+          let resolvedDaysOfWeek: number[] | undefined = h.days_of_week;
+
+          // Fallback if metadata column didn't exist in Supabase yet but was encoded in description JSON
+          if (h.description) {
+            if ((!resolvedMissedDates || resolvedMissedDates.length === 0) && h.description.includes("__MISSED_DATES__:")) {
+              try {
+                const match = h.description.match(/__MISSED_DATES__:(\[[^\]]*\])/);
+                if (match && match[1]) {
+                  resolvedMissedDates = JSON.parse(match[1]);
+                }
+              } catch (e) {}
+            }
+            if (!resolvedDaysOfWeek && h.description.includes("__DAYS_OF_WEEK__:")) {
+              try {
+                const match = h.description.match(/__DAYS_OF_WEEK__:(\[[^\]]*\])/);
+                if (match && match[1]) {
+                  resolvedDaysOfWeek = JSON.parse(match[1]);
+                }
+              } catch (e) {}
+            }
           }
 
-          const cleanDescription = h.description ? h.description.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "").trim() || undefined : undefined;
+          let cleanDescription = h.description
+            ? h.description
+                .replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "")
+                .replace(/\n?__DAYS_OF_WEEK__:\[[^\]]*\]/, "")
+                .trim() || undefined
+            : undefined;
 
           return {
             id: h.id,
@@ -145,6 +162,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
             targetMinutes: h.target_minutes,
             preferredTime: h.preferred_time || undefined,
             frequency: h.frequency,
+            daysOfWeek: resolvedDaysOfWeek,
             streak: h.streak || 0,
             completedDates: h.completed_dates || [],
             missedDates: resolvedMissedDates,
@@ -181,12 +199,61 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       const taskMap = new Map<string, Task>();
       parsedLocalTasks.forEach((t) => taskMap.set(t.id, t));
       loadedTasks.forEach((t) => taskMap.set(t.id, t));
-      const finalTasks = Array.from(taskMap.values());
+      let finalTasks = Array.from(taskMap.values());
 
       const habitMap = new Map<string, Habit>();
       parsedLocalHabits.forEach((h) => habitMap.set(h.id, h));
       loadedHabits.forEach((h) => habitMap.set(h.id, h));
       const finalHabits = Array.from(habitMap.values());
+
+      // Auto-populate habit scheduled instances across all dates (past 14 days, future 45 days)
+      const todayStr = getTodayDateString();
+      const targetDates = getDateRange(todayStr, 14, 45);
+      const newGeneratedTasks: Task[] = [];
+
+      for (const habit of finalHabits) {
+        const startTime = habit.preferredTime || "08:00";
+        const duration = habit.targetMinutes || 30;
+        const endTime = addMinutesToTime(startTime, duration);
+
+        for (const dateStr of targetDates) {
+          if (!doesHabitApplyToDate(habit, dateStr)) continue;
+
+          const exists = finalTasks.some(
+            (t) =>
+              (t.habitId === habit.id ||
+                (t.isHabitInstance && t.title.toLowerCase().trim() === habit.title.toLowerCase().trim())) &&
+              t.scheduledDate === dateStr
+          );
+
+          if (!exists) {
+            const isCompleted = habit.completedDates?.includes(dateStr) || false;
+            const isMissed = habit.missedDates?.includes(dateStr) || false;
+            const status = isMissed ? "missed" : isCompleted ? "completed" : "pending";
+
+            newGeneratedTasks.push({
+              id: `habit-task-${habit.id}-${dateStr}`,
+              title: habit.title,
+              description: habit.description || "Recurring habit session",
+              category: habit.category,
+              priority: "medium",
+              estimatedMinutes: duration,
+              completed: isCompleted,
+              status,
+              scheduledDate: dateStr,
+              startTime,
+              endTime,
+              isHabitInstance: true,
+              habitId: habit.id,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      if (newGeneratedTasks.length > 0) {
+        finalTasks = [...newGeneratedTasks, ...finalTasks];
+      }
 
       setTasks(finalTasks);
       setHabits(finalHabits);
@@ -211,8 +278,60 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       const storedHabits = localStorage.getItem("elife_habits_guest");
       const storedCategories = localStorage.getItem("elife_categories_guest");
 
-      setTasks(storedTasks ? JSON.parse(storedTasks) : []);
-      setHabits(storedHabits ? JSON.parse(storedHabits) : []);
+      let parsedTasks: Task[] = storedTasks ? JSON.parse(storedTasks) : [];
+      const parsedHabits: Habit[] = storedHabits ? JSON.parse(storedHabits) : [];
+
+      // Auto-populate habit scheduled instances for guest
+      const todayStr = getTodayDateString();
+      const targetDates = getDateRange(todayStr, 14, 45);
+      const newGeneratedTasks: Task[] = [];
+
+      for (const habit of parsedHabits) {
+        const startTime = habit.preferredTime || "08:00";
+        const duration = habit.targetMinutes || 30;
+        const endTime = addMinutesToTime(startTime, duration);
+
+        for (const dateStr of targetDates) {
+          if (!doesHabitApplyToDate(habit, dateStr)) continue;
+
+          const exists = parsedTasks.some(
+            (t) =>
+              (t.habitId === habit.id ||
+                (t.isHabitInstance && t.title.toLowerCase().trim() === habit.title.toLowerCase().trim())) &&
+              t.scheduledDate === dateStr
+          );
+
+          if (!exists) {
+            const isCompleted = habit.completedDates?.includes(dateStr) || false;
+            const isMissed = habit.missedDates?.includes(dateStr) || false;
+            const status = isMissed ? "missed" : isCompleted ? "completed" : "pending";
+
+            newGeneratedTasks.push({
+              id: `habit-task-${habit.id}-${dateStr}`,
+              title: habit.title,
+              description: habit.description || "Recurring habit session",
+              category: habit.category,
+              priority: "medium",
+              estimatedMinutes: duration,
+              completed: isCompleted,
+              status,
+              scheduledDate: dateStr,
+              startTime,
+              endTime,
+              isHabitInstance: true,
+              habitId: habit.id,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      if (newGeneratedTasks.length > 0) {
+        parsedTasks = [...newGeneratedTasks, ...parsedTasks];
+      }
+
+      setTasks(parsedTasks);
+      setHabits(parsedHabits);
       setCategories(storedCategories ? JSON.parse(storedCategories) : initialCategories);
     } catch (e) {
       setTasks([]);
@@ -457,6 +576,11 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
           } else {
             descriptionWithFallback = descriptionWithFallback.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "").trim();
           }
+          if (h.daysOfWeek && h.daysOfWeek.length > 0) {
+            descriptionWithFallback = `${descriptionWithFallback.replace(/\n?__DAYS_OF_WEEK__:\[[^\]]*\]/, "")}\n__DAYS_OF_WEEK__:${JSON.stringify(h.daysOfWeek)}`.trim();
+          } else {
+            descriptionWithFallback = descriptionWithFallback.replace(/\n?__DAYS_OF_WEEK__:\[[^\]]*\]/, "").trim();
+          }
 
           return {
             id: h.id,
@@ -626,11 +750,17 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     if (user && isSupabaseConfigured && supabase) {
       const currentHabit = resolvedUpdatedHabit || habits.find((h) => h.id === id);
       const missedDates = updates.missedDates ?? currentHabit?.missedDates ?? [];
+      const daysOfWeek = updates.daysOfWeek ?? currentHabit?.daysOfWeek;
       let descriptionWithFallback = updates.description ?? currentHabit?.description ?? "";
       if (missedDates && missedDates.length > 0) {
         descriptionWithFallback = `${descriptionWithFallback.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "")}\n__MISSED_DATES__:${JSON.stringify(missedDates)}`.trim();
       } else {
         descriptionWithFallback = descriptionWithFallback.replace(/\n?__MISSED_DATES__:\[[^\]]*\]/, "").trim();
+      }
+      if (daysOfWeek && daysOfWeek.length > 0) {
+        descriptionWithFallback = `${descriptionWithFallback.replace(/\n?__DAYS_OF_WEEK__:\[[^\]]*\]/, "")}\n__DAYS_OF_WEEK__:${JSON.stringify(daysOfWeek)}`.trim();
+      } else {
+        descriptionWithFallback = descriptionWithFallback.replace(/\n?__DAYS_OF_WEEK__:\[[^\]]*\]/, "").trim();
       }
 
       const dbUpdates: any = { 
@@ -675,6 +805,36 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.error("Failed to update habit in Supabase:", err);
       }
+    }
+
+    // If preferredTime, targetMinutes, title, or category changed, update all uncompleted/pending habit instances
+    if (
+      updates.preferredTime !== undefined ||
+      updates.targetMinutes !== undefined ||
+      updates.title !== undefined ||
+      updates.category !== undefined
+    ) {
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.habitId === id) {
+            const newTitle = updates.title ?? t.title;
+            const newCategory = updates.category ?? t.category;
+            const newStart = updates.preferredTime ?? t.startTime ?? "08:00";
+            const newDur = updates.targetMinutes ?? t.estimatedMinutes ?? 30;
+            const newEnd = addMinutesToTime(newStart, newDur);
+
+            return {
+              ...t,
+              title: newTitle,
+              category: newCategory,
+              startTime: newStart,
+              endTime: newEnd,
+              estimatedMinutes: newDur,
+            };
+          }
+          return t;
+        })
+      );
     }
   };
 
@@ -925,12 +1085,17 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     setHabits((prev) => [...prev, newHabit]);
 
     if (user && isSupabaseConfigured && supabase) {
+      let descriptionWithFallback = newHabit.description || "";
+      if (newHabit.daysOfWeek && newHabit.daysOfWeek.length > 0) {
+        descriptionWithFallback = `${descriptionWithFallback.replace(/\n?__DAYS_OF_WEEK__:\[[^\]]*\]/, "")}\n__DAYS_OF_WEEK__:${JSON.stringify(newHabit.daysOfWeek)}`.trim();
+      }
+
       await supabase.from("habits").insert([
         {
           id: newHabit.id,
           user_id: user.id,
           title: newHabit.title,
-          description: newHabit.description || null,
+          description: descriptionWithFallback || null,
           category: newHabit.category,
           target_minutes: newHabit.targetMinutes,
           preferred_time: newHabit.preferredTime || "08:00",
@@ -943,24 +1108,57 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       ]);
     }
 
-    // Automatically place the habit onto today's timeline schedule once in the first set
+    // Automatically generate habit instances across all matching schedule dates (past 14 days, future 45 days)
+    const todayStr = getTodayDateString();
+    const targetDates = getDateRange(todayStr, 14, 45);
     const startTime = newHabit.preferredTime || "08:00";
-    const endTime = addMinutesToTime(startTime, newHabit.targetMinutes || 30);
-    const targetDate = selectedDate || getTodayDateString();
+    const duration = newHabit.targetMinutes || 30;
+    const endTime = addMinutesToTime(startTime, duration);
 
-    await addTask({
-      title: newHabit.title,
-      description: newHabit.description || "Recurring habit session",
-      category: newHabit.category,
-      priority: "medium",
-      estimatedMinutes: newHabit.targetMinutes || 30,
-      completed: false,
-      scheduledDate: targetDate,
-      startTime,
-      endTime,
-      isHabitInstance: true,
-      habitId: newHabit.id,
-    });
+    const instancesToCreate: Task[] = [];
+    for (const dateStr of targetDates) {
+      if (!doesHabitApplyToDate(newHabit, dateStr)) continue;
+
+      instancesToCreate.push({
+        id: `habit-task-${newHabit.id}-${dateStr}`,
+        title: newHabit.title,
+        description: newHabit.description || "Recurring habit session",
+        category: newHabit.category,
+        priority: "medium",
+        estimatedMinutes: duration,
+        completed: false,
+        status: "pending",
+        scheduledDate: dateStr,
+        startTime,
+        endTime,
+        isHabitInstance: true,
+        habitId: newHabit.id,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    if (instancesToCreate.length > 0) {
+      setTasks((prev) => [...instancesToCreate, ...prev]);
+
+      if (user && isSupabaseConfigured && supabase) {
+        const payload = instancesToCreate.map((t) => ({
+          id: t.id,
+          user_id: user.id,
+          title: t.title,
+          description: t.description || null,
+          category: t.category,
+          priority: t.priority,
+          estimated_minutes: t.estimatedMinutes,
+          completed: false,
+          scheduled_date: t.scheduledDate || null,
+          start_time: t.startTime || null,
+          end_time: t.endTime || null,
+          is_habit_instance: true,
+          habit_id: newHabit.id,
+        }));
+        await supabase.from("tasks").insert(payload);
+      }
+    }
   };
 
   const deleteHabit = async (id: string) => {
