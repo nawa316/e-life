@@ -37,6 +37,8 @@ interface ScheduleContextType {
   toggleHabitCompletion: (habitId: string, date: string) => Promise<void>;
   toggleHabitMissed: (habitId: string, date: string) => Promise<void>;
   scheduleHabitForToday: (habitId: string) => Promise<void>;
+  addCategory: (category: Omit<Category, "id">) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
   importBackupData: (tasks: Task[], habits: Habit[], categories?: Category[]) => void;
   resetToDefaults: () => Promise<void>;
 }
@@ -601,6 +603,20 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.from("habits").upsert(habitPayload, { onConflict: "id" });
         if (error) {
           console.warn("Habit sync error:", error);
+        }
+      }
+
+      if (categories.length > 0) {
+        const catPayload = categories.map((c) => ({
+          id: c.id,
+          user_id: user.id,
+          name: c.name,
+          color: c.color,
+          icon: c.icon || null,
+        }));
+        const { error } = await supabase.from("categories").upsert(catPayload, { onConflict: "id" });
+        if (error) {
+          console.warn("Category sync error:", error);
         }
       }
 
@@ -1195,6 +1211,33 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const addCategory = async (catData: Omit<Category, "id">) => {
+    const newCat: Category = {
+      ...catData,
+      id: `cat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    };
+    setCategories((prev) => [...prev, newCat]);
+
+    if (user && isSupabaseConfigured && supabase) {
+      await supabase.from("categories").insert([
+        {
+          id: newCat.id,
+          user_id: user.id,
+          name: newCat.name,
+          color: newCat.color,
+          icon: newCat.icon || null,
+        },
+      ]);
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    if (user && isSupabaseConfigured && supabase) {
+      await supabase.from("categories").delete().eq("id", id).eq("user_id", user.id);
+    }
+  };
+
   const importBackupData = (newTasks: Task[], newHabits: Habit[], newCategories?: Category[]) => {
     if (newTasks) setTasks(newTasks);
     if (newHabits) setHabits(newHabits);
@@ -1241,6 +1284,8 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         toggleHabitCompletion,
         toggleHabitMissed,
         scheduleHabitForToday,
+        addCategory,
+        deleteCategory,
         importBackupData,
         resetToDefaults,
       }}

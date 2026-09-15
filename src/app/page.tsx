@@ -24,6 +24,7 @@ import { HabitTracker } from "@/components/habits/HabitTracker";
 import { AnalyticsView } from "@/components/stats/AnalyticsView";
 import { PomodoroTimer } from "@/components/timeline/PomodoroTimer";
 import { ExportModal } from "@/components/ui/ExportModal";
+import { CategoryManagerModal } from "@/components/ui/CategoryManagerModal";
 import { Task } from "@/lib/types";
 import { UserMenu } from "@/components/auth/UserMenu";
 import {
@@ -38,6 +39,7 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -48,6 +50,7 @@ function ScheduleApp() {
   const [mobileTab, setMobileTab] = useState<"planner" | "backlog" | "habits" | "focus" | "stats">("planner");
   const [timelineView, setTimelineView] = useState<"day" | "week">("day");
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Collapsible panels state for desktop
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
@@ -368,6 +371,18 @@ function ScheduleApp() {
               </button>
             </div>
 
+            {/* Categories Management Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="px-2 py-1 text-xs sm:px-2.5"
+              title="Manage Categories"
+            >
+              <Tag size={13} />
+              <span className="hidden sm:inline">Categories</span>
+            </Button>
+
             {/* Sync / Export Button */}
             <Button
               size="sm"
@@ -542,6 +557,12 @@ function ScheduleApp() {
             </button>
           </nav>
         </div>
+
+        {/* Categories Manager Modal */}
+        <CategoryManagerModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => setIsCategoryModalOpen(false)}
+        />
 
         {/* Sync & Export Modal */}
         <ExportModal isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />

@@ -224,9 +224,11 @@ export function BacklogDrawer() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Category
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-zinc-300">
+                  Category
+                </label>
+              </div>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
