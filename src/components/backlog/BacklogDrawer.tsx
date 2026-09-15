@@ -31,12 +31,20 @@ export function BacklogDrawer() {
   const [priority, setPriority] = useState<Priority>("medium");
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
 
-  const [activeTab, setActiveTab] = useState<"active" | "missed">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "completed" | "missed">("active");
 
   // Filter unscheduled backlog tasks
   const backlogTasks = tasks.filter((task) => !task.scheduledDate && !task.isHabitInstance && !task.habitId);
+  const activeBacklogTasks = backlogTasks.filter((t) => !t.completed && t.status !== "completed" && t.status !== "missed");
+  const completedBacklogTasks = backlogTasks.filter((t) => t.completed || t.status === "completed");
   const missedTasks = tasks.filter((task) => task.status === "missed" && !task.isHabitInstance && !task.habitId);
-  const targetTaskList = activeTab === "active" ? backlogTasks.filter((t) => t.status !== "missed") : missedTasks;
+
+  const targetTaskList =
+    activeTab === "active"
+      ? activeBacklogTasks
+      : activeTab === "completed"
+      ? completedBacklogTasks
+      : missedTasks;
 
   const filteredTasks = targetTaskList.filter((task) => {
     const matchesSearch =
@@ -87,33 +95,48 @@ export function BacklogDrawer() {
         </Button>
       </div>
 
-      {/* Tabs: Active Backlog vs Missed Tasks */}
+      {/* Tabs: Active Backlog vs Completed vs Missed Tasks */}
       <div className="flex items-center gap-1.5 pt-2.5 pb-1">
         <button
           type="button"
           onClick={() => setActiveTab("active")}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "active"
               ? "bg-zinc-800 text-zinc-100 shadow-xs border border-zinc-700"
               : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
           }`}
         >
-          <span>Backlog</span>
-          <span className="text-[10px] bg-zinc-700 text-zinc-300 px-1.5 py-0.2 rounded-full font-mono">
-            {backlogTasks.filter((t) => t.status !== "missed").length}
+          <span>Active</span>
+          <span className="text-[10px] bg-zinc-750 text-zinc-300 px-1.5 py-0.2 rounded-full font-mono">
+            {activeBacklogTasks.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("completed")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === "completed"
+              ? "bg-emerald-500/20 text-emerald-300 shadow-xs border border-emerald-500/40"
+              : "text-zinc-400 hover:text-emerald-400 hover:bg-zinc-900"
+          }`}
+        >
+          <span>Completed</span>
+          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded-full font-mono">
+            {completedBacklogTasks.length}
           </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("missed")}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "missed"
               ? "bg-red-500/20 text-red-300 shadow-xs border border-red-500/40"
               : "text-zinc-400 hover:text-red-400 hover:bg-zinc-900"
           }`}
         >
-          <span>Missed Tasks</span>
+          <span>Missed</span>
           <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded-full font-mono">
             {missedTasks.length}
           </span>
@@ -126,7 +149,13 @@ export function BacklogDrawer() {
           <Search className="absolute left-3 top-2.5 text-zinc-500" size={15} />
           <input
             type="text"
-            placeholder={activeTab === "active" ? "Search backlog..." : "Search missed tasks..."}
+            placeholder={
+              activeTab === "active"
+                ? "Search active backlog..."
+                : activeTab === "completed"
+                ? "Search completed tasks..."
+                : "Search missed tasks..."
+            }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-colors"
@@ -172,13 +201,23 @@ export function BacklogDrawer() {
       <div className="flex-1 overflow-y-auto space-y-2.5 pt-3 pr-1">
         {filteredTasks.length === 0 ? (
           <div className="h-48 flex flex-col items-center justify-center text-center p-4 border border-dashed border-zinc-800 rounded-xl text-zinc-500">
-            <Inbox size={32} className="mb-2 text-zinc-600" />
+            {activeTab === "completed" ? (
+              <CheckCircle size={32} className="mb-2 text-emerald-500/60" />
+            ) : (
+              <Inbox size={32} className="mb-2 text-zinc-600" />
+            )}
             <p className="text-sm font-medium text-zinc-400">
-              {activeTab === "active" ? "No tasks found in backlog" : "No missed tasks recorded"}
+              {activeTab === "active"
+                ? "No active tasks in backlog"
+                : activeTab === "completed"
+                ? "No completed tasks yet"
+                : "No missed tasks recorded"}
             </p>
             <p className="text-xs text-zinc-600 mt-1 max-w-[200px]">
               {activeTab === "active"
                 ? "Add upcoming tasks or drag scheduled items here to hold them."
+                : activeTab === "completed"
+                ? "Tasks checked as done in your backlog will be archived here."
                 : "Tasks marked as missed will appear here for easy restore or deletion."}
             </p>
           </div>
