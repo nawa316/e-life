@@ -207,6 +207,21 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       parsedLocalHabits.forEach((h) => habitMap.set(h.id, h));
       loadedHabits.forEach((h) => habitMap.set(h.id, h));
       const finalHabits = Array.from(habitMap.values());
+      const activeHabitIds = new Set(finalHabits.map((h) => h.id));
+      const activeHabitTitles = new Set(finalHabits.map((h) => h.title.toLowerCase().trim()));
+
+      // Filter out orphaned habit tasks (tasks that have isHabitInstance or habitId or start with habit-task-, but whose habit is gone)
+      finalTasks = finalTasks.filter((t) => {
+        const isHabitTask = t.isHabitInstance || !!t.habitId || t.id.startsWith("habit-task-");
+        if (!isHabitTask) return true;
+        
+        // Check if matching any active habit
+        const matchesId = t.habitId && activeHabitIds.has(t.habitId);
+        const matchesTitle = activeHabitTitles.has(t.title.toLowerCase().trim());
+        const matchesPrefix = Array.from(activeHabitIds).some((hid) => t.id.startsWith(`habit-task-${hid}-`));
+
+        return matchesId || matchesTitle || matchesPrefix;
+      });
 
       // Auto-populate habit scheduled instances across all dates (past 14 days, future 45 days)
       const todayStr = getTodayDateString();
@@ -282,6 +297,20 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
 
       let parsedTasks: Task[] = storedTasks ? JSON.parse(storedTasks) : [];
       const parsedHabits: Habit[] = storedHabits ? JSON.parse(storedHabits) : [];
+      const guestHabitIds = new Set(parsedHabits.map((h) => h.id));
+      const guestHabitTitles = new Set(parsedHabits.map((h) => h.title.toLowerCase().trim()));
+
+      // Filter out orphaned habit tasks
+      parsedTasks = parsedTasks.filter((t) => {
+        const isHabitTask = t.isHabitInstance || !!t.habitId || t.id.startsWith("habit-task-");
+        if (!isHabitTask) return true;
+        
+        const matchesId = t.habitId && guestHabitIds.has(t.habitId);
+        const matchesTitle = guestHabitTitles.has(t.title.toLowerCase().trim());
+        const matchesPrefix = Array.from(guestHabitIds).some((hid) => t.id.startsWith(`habit-task-${hid}-`));
+
+        return matchesId || matchesTitle || matchesPrefix;
+      });
 
       // Auto-populate habit scheduled instances for guest
       const todayStr = getTodayDateString();
@@ -1178,14 +1207,36 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteHabit = async (id: string) => {
+    const targetHabit = habits.find((h) => h.id === id);
+    const targetTitle = targetHabit ? targetHabit.title.toLowerCase().trim() : "";
+
     setHabits((prev) => prev.filter((h) => h.id !== id));
-    setTasks((prev) => prev.filter((t) => t.habitId !== id));
+    setTasks((prev) =>
+      prev.filter((t) => {
+        if (t.habitId === id) return false;
+        if (t.id.startsWith(`habit-task-${id}-`)) return false;
+        if (targetTitle && t.isHabitInstance && t.title.toLowerCase().trim() === targetTitle) return false;
+        return true;
+      })
+    );
 
     if (user && isSupabaseConfigured && supabase) {
-      await Promise.all([
-        supabase.from("habits").delete().eq("id", id).eq("user_id", user.id),
-        supabase.from("tasks").delete().eq("habit_id", id).eq("user_id", user.id),
-      ]);
+      try {
+        const deleteTasksQuery = supabase.from("tasks").delete().eq("user_id", user.id);
+        if (targetTitle) {
+          await Promise.all([
+            supabase.from("habits").delete().eq("id", id).eq("user_id", user.id),
+            deleteTasksQuery.or(`habit_id.eq.${id},and(is_habit_instance.eq.true,title.ilike.${targetHabit!.title})`),
+          ]);
+        } else {
+          await Promise.all([
+            supabase.from("habits").delete().eq("id", id).eq("user_id", user.id),
+            deleteTasksQuery.eq("habit_id", id),
+          ]);
+        }
+      } catch (err) {
+        console.error("Failed to delete habit and associated tasks from Supabase:", err);
+      }
     }
   };
 
