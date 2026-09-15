@@ -203,25 +203,41 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
       loadedTasks.forEach((t) => taskMap.set(t.id, t));
       let finalTasks = Array.from(taskMap.values());
 
-      const habitMap = new Map<string, Habit>();
-      parsedLocalHabits.forEach((h) => habitMap.set(h.id, h));
-      loadedHabits.forEach((h) => habitMap.set(h.id, h));
-      const finalHabits = Array.from(habitMap.values());
+      // For authenticated user: remote habits from Supabase are the authoritative set of habits.
+      // (Do NOT resurrect deleted habits from local cache!)
+      let finalHabits = loadedHabits;
+      if (habitsRes.data && habitsRes.data.length === 0 && !localCachedHabits) {
+        finalHabits = [];
+      } else if (!habitsRes.data || habitsRes.error) {
+        // Only fallback to local habits if network/remote query failed
+        finalHabits = parsedLocalHabits.length > 0 ? parsedLocalHabits : loadedHabits;
+      }
+
       const activeHabitIds = new Set(finalHabits.map((h) => h.id));
       const activeHabitTitles = new Set(finalHabits.map((h) => h.title.toLowerCase().trim()));
 
-      // Filter out orphaned habit tasks (tasks that have isHabitInstance or habitId or start with habit-task-, but whose habit is gone)
+      // Identify and filter out orphaned habit tasks (tasks whose habit has been deleted)
+      const orphanedTaskIds: string[] = [];
       finalTasks = finalTasks.filter((t) => {
         const isHabitTask = t.isHabitInstance || !!t.habitId || t.id.startsWith("habit-task-");
         if (!isHabitTask) return true;
         
         // Check if matching any active habit
-        const matchesId = t.habitId && activeHabitIds.has(t.habitId);
+        const matchesId = t.habitId ? activeHabitIds.has(t.habitId) : false;
         const matchesTitle = activeHabitTitles.has(t.title.toLowerCase().trim());
         const matchesPrefix = Array.from(activeHabitIds).some((hid) => t.id.startsWith(`habit-task-${hid}-`));
 
-        return matchesId || matchesTitle || matchesPrefix;
+        const isValid = matchesId || matchesTitle || matchesPrefix;
+        if (!isValid) {
+          orphanedTaskIds.push(t.id);
+        }
+        return isValid;
       });
+
+      // Also clean up any orphaned tasks in Supabase in background
+      if (orphanedTaskIds.length > 0 && supabase) {
+        supabase.from("tasks").delete().in("id", orphanedTaskIds).eq("user_id", currentUser.id).then(() => {});
+      }
 
       // Auto-populate habit scheduled instances across all dates (past 14 days, future 45 days)
       const todayStr = getTodayDateString();
